@@ -1,0 +1,32 @@
+# Netlify deployment for the Next.js app.
+#
+# The Next.js runtime deploys routes, server actions and API handlers as
+# functions, so this is a full-stack deploy: the Postgres database is the only
+# external dependency.
+#
+# Secrets are NOT set here. Add these in the Netlify UI
+# (Site configuration → Environment variables):
+#   DATABASE_URL          e.g. Supabase session-pooler connection string
+#   SESSION_SECRET        32+ random characters (`openssl rand -base64 32`)
+#   GOOGLE_PLACES_API_KEY optional; without it the demo dataset is used
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Never let a misconfigured deploy fall back to the SQLite file, which Netlify
+  # cannot persist.
+  DATABASE_DRIVER = "postgres"
+  DATABASE_SSL = "true"
+  PLACES_PROVIDER = "auto"
+  PLACES_REGION_CODE = "CY"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000

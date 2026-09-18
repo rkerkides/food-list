@@ -1,0 +1,68 @@
+# Local / self-hosted stack: Postgres 16 + the Next.js app.
+#
+#   SESSION_SECRET="$(openssl rand -base64 32)" docker compose up --build
+#
+# The app waits for the `migrate` service, which applies the schema before the
+# server starts serving traffic.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-foodlist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodlist}
+      POSTGRES_DB: ${POSTGRES_DB:-foodlist}
+    # Host port 5433 so it does not clash with a local Postgres on 5432.
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - foodlist-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-foodlist} -d ${POSTGRES_DB:-foodlist}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: npm run db:migrate
+    environment:
+      DATABASE_DRIVER: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-foodlist}:${POSTGRES_PASSWORD:-foodlist}@db:5432/${POSTGRES_DB:-foodlist}
+      # The bundled Postgres container has no TLS; set DATABASE_SSL=true when
+      # pointing at a managed provider such as Supabase.
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_DRIVER: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-foodlist}:${POSTGRES_PASSWORD:-foodlist}@db:5432/${POSTGRES_DB:-foodlist}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      # Compose reads .env automatically. Without this the container reports
+      # unhealthy on /api/health and refuses to create sessions.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      # Set GOOGLE_PLACES_API_KEY to use live Google Places data instead of the
+      # bundled demo dataset.
+      PLACES_PROVIDER: ${PLACES_PROVIDER:-auto}
+      PLACES_REGION_CODE: ${PLACES_REGION_CODE:-CY}
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  foodlist-db:
