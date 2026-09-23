@@ -113,7 +113,16 @@ export async function addPlaceFromProvider(
   if (phone !== (result.phone ?? null)) base.overrides.push("phone");
 
   const created = await repo.places.insert(base);
-  return { status: "created", place: created, provider: { id: result.provider, label: providerLabel(result.provider), mode: result.provider === "demo" ? "demo" : "live", configured: true } };
+  return {
+    status: "created",
+    place: created,
+    provider: {
+      id: result.provider,
+      label: providerLabel(result.provider),
+      mode: result.provider === "demo" ? "demo" : result.provider === "osm" ? "local" : "live",
+      configured: true,
+    },
+  };
 }
 
 export async function createManualPlace(
@@ -294,10 +303,9 @@ export async function refreshPlace(
   }
 
   try {
-    const { result, provider } = await getPlaceDetails(
-      place.provider === "google" ? "google" : "demo",
-      place.providerPlaceId,
-    );
+    const providerId =
+      place.provider === "google" || place.provider === "osm" ? place.provider : "demo";
+    const { result, provider } = await getPlaceDetails(providerId, place.providerPlaceId);
 
     if (!result) {
       await repo.refreshes.insert({
@@ -433,6 +441,8 @@ export async function searchPlacesForUser(
 
 function providerLabel(provider: PlaceSearchResult["provider"]): string {
   switch (provider) {
+    case "osm":
+      return "OpenStreetMap Cyprus";
     case "google":
       return "Google Places";
     case "demo":

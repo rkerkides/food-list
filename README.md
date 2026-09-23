@@ -10,13 +10,16 @@ Next.js 16 (App Router) · React 19 · Tailwind 4 · TypeScript · SQLite or Pos
 
 ```bash
 npm install
-npm run setup       # applies migrations and seeds the demo account
+npm run setup       # migrations + keyless OSM catalog + demo account
 npm run dev         # http://localhost:3000
 ```
 
 `npm run setup` uses a local SQLite file at `.data/food-list.db` and needs no
-credentials. Sign in with the demo account (`demo@food-list.app` / `demo1234`)
-or use the one-click demo button on the login page.
+credentials or API key. It makes one network request to import named Cyprus
+food venues from OpenStreetMap. Sign in with the demo account
+(`demo@food-list.app` / `demo1234`) or use the one-click demo button on the
+login page. For a completely offline setup using only the bundled fictional
+dataset, run `npm run setup:demo` instead.
 
 ## Scripts
 
@@ -28,6 +31,7 @@ or use the one-click demo button on the login page.
 | `npm test` | Vitest suite |
 | `npm run db:migrate` | Apply pending migrations |
 | `npm run db:seed` | Seed/reseed the demo account |
+| `npm run places:sync` | Refresh the local Cyprus OpenStreetMap catalog |
 | `npm run db:reset` | Reset the demo account's data |
 | `npm run db:sql` | Emit `supabase/migrations/*.sql` from the TS migrations |
 | `npm run docker:up` / `npm run docker:down` | Local Postgres + app stack |
@@ -53,12 +57,56 @@ then set `DATABASE_URL` and `DATABASE_SSL=true`.
 
 ## Place data
 
-Two providers sit behind one interface, selected by `PLACES_PROVIDER`:
+Three providers sit behind one interface, selected by `PLACES_PROVIDER`:
 
 - `auto` (default): Google Places API (New) when `GOOGLE_PLACES_API_KEY` is set,
-  otherwise the bundled demo dataset.
+  otherwise the local OpenStreetMap catalog.
+- `osm`: keyless local search over real Cyprus venues imported by
+  `npm run places:sync`. Everyday searches do not make external requests.
 - `google`: always Google; errors surface to the user.
 - `demo`: always the bundled dataset of 44 fictional Cyprus venues.
+
+The OSM sync downloads named restaurants, cafes, bakeries, bars, takeaway and
+dessert venues through a single Overpass query, normalises their coordinates,
+category, cuisine, address, website, phone and opening hours, then atomically
+replaces the local catalog. Existing saved places are not touched. Re-run the
+command whenever you want a fresh snapshot; monthly is ample for personal use.
+Set `OSM_OVERPASS_URL` to switch instances and `OSM_USER_AGENT` to identify your
+installation. Data is © OpenStreetMap contributors and available under the
+[ODbL](https://www.openstreetmap.org/copyright).
+
+Saved OSM places expose whatever community-maintained details are available:
+phone, website, opening hours, menu, description, operator/brand and useful
+amenities such as delivery, outdoor seating and wheelchair access. When a venue
+has a properly tagged Wikimedia Commons file, the app uses it with a link back
+to its Commons page. Otherwise it selects a bundled illustrative food image
+from the venue's cuisines first, then its name and broad category. The bundled
+set covers burgers, Italian/pizza, Greek/Cypriot, gyros/souvlaki, Asian, fusion,
+cafe, bakery, dessert, seafood, bar and general restaurants. Editing a place's
+cuisine tags immediately changes its fallback; failed or expired provider photos also
+fall back automatically. From a place's Edit dialog you can override that image
+with any bundled cuisine image or a private JPEG, PNG or WebP upload (up to 5 MB),
+and switch back to automatic selection at any time. Every place also has keyless Google Maps search and
+directions links, so current ratings, user photos and live business information
+can be viewed on Google.
+Those Google details are not copied into the app without a Places API key.
+
+The in-app map is a real interactive Leaflet map using OpenStreetMap's standard
+tiles, with pan, zoom and selectable saved-place markers. It needs an internet
+connection to load the street tiles but no map API key. The public tile service
+is appropriate for normal personal use; a larger public deployment should use
+a dedicated OSM-compatible tile provider.
+
+The map can show the device location (after browser permission) and uses it as
+the default distance starting point. A typed Cyprus address, area, town, or
+coordinate pair can replace that baseline; this choice is saved only in that
+browser. Address lookup uses OpenStreetMap's Nominatim service through the
+signed-in app, with no map API key.
+
+OpenStreetMap coverage varies by venue. Existing saved OSM places can pick up
+newly supported fields by using **Refresh details** after a catalog sync. The
+app's notes, visit ratings and dish comments remain private, user-entered data;
+OSM mapper notes are deliberately not imported.
 
 Google results are normalised into the app's own model and stored as a snapshot
 per saved place. "Refresh" on a place re-fetches that one place, merges changes,
@@ -81,8 +129,8 @@ and dish ratings.
 SESSION_SECRET="$(openssl rand -base64 32)" docker compose up --build
 ```
 
-That starts Postgres 16 (host port 5433), applies migrations in a one-shot
-`migrate` service, then serves the app on http://localhost:3000 with a
+That starts Postgres 16 (host port 5433), applies migrations, imports the OSM
+catalog when it is empty, then serves the app on http://localhost:3000 with a
 healthcheck on `/api/health`. Configuration lives in `.env` next to
 `docker-compose.yml` (compose reads it automatically):
 
@@ -109,7 +157,8 @@ Set these in **Site configuration → Environment variables**:
 | `DATABASE_URL` | yes | Supabase/Postgres connection string |
 | `SESSION_SECRET` | yes | 32+ random characters; the app refuses to start sessions without it in production |
 | `DATABASE_SSL` | yes | `true` for Supabase |
-| `GOOGLE_PLACES_API_KEY` | no | omit to run on the bundled dataset |
+| `PLACES_PROVIDER` | no | defaults to local OSM when no Google key is present |
+| `GOOGLE_PLACES_API_KEY` | no | omit to use the local OSM catalog |
 
 `DATABASE_DRIVER=postgres` is set in `netlify.toml` so a missing `DATABASE_URL`
 fails loudly instead of quietly writing to a file Netlify cannot persist.
@@ -117,7 +166,9 @@ fails loudly instead of quietly writing to a file Netlify cannot persist.
 Because migrations run on first request, the very first request after a deploy
 applies the schema. To do it ahead of time, run `npm run db:migrate` locally
 against the production `DATABASE_URL`, or `supabase db push` using the emitted
-SQL in `supabase/migrations/`.
+SQL in `supabase/migrations/`. Run `npm run places:sync` with the same production
+database variables once after migration, and again whenever you want to refresh
+the OSM snapshot.
 
 ## Configuration
 
@@ -130,7 +181,9 @@ See `.env.example` for the full list. The important ones:
 | `DATABASE_SSL` | `true` | TLS for Postgres |
 | `SQLITE_PATH` | `.data/food-list.db` | Local database file |
 | `SESSION_SECRET` | dev fallback | Session token salt; **required** in production |
-| `PLACES_PROVIDER` | `auto` | `auto` / `google` / `demo` |
+| `PLACES_PROVIDER` | `auto` | `auto` / `osm` / `google` / `demo` |
+| `OSM_OVERPASS_URL` | public Overpass instance | Source used only by `places:sync` |
+| `OSM_USER_AGENT` | Trapezi identifier | Identifies the catalog import request |
 | `GOOGLE_PLACES_API_KEY` | — | Enables live Google Places |
 | `PLACES_REGION_CODE` | `CY` | Region bias for place search |
 | `MOCK_PLACES_LATENCY_MS` / `MOCK_PLACES_FAILURE_RATE` | `120` / `0` | Demo-provider simulation |
@@ -139,4 +192,4 @@ See `.env.example` for the full list. The important ones:
 
 `GET /api/health` returns `200` with the database driver, provider mode and
 configuration state, or `503` with a `problems` list (unreachable database,
-missing `SESSION_SECRET`). It never exposes secret values.
+missing `SESSION_SECRET`, or an empty OSM catalog). It never exposes secret values.

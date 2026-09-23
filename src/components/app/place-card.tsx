@@ -43,6 +43,7 @@ export function PlaceCard({
         <PlaceVisual
           name={place.name}
           category={place.category}
+          cuisines={place.cuisines}
           photoRef={place.photoRef}
           size={compact ? "card" : "card"}
           className={compact ? "aspect-[16/9]" : undefined}

@@ -3,7 +3,8 @@
  *
  * These are deliberately independent from both the database representation and
  * from any external place provider so that storage (SQLite/Postgres) and the
- * provider (Google Places / demo seed) can be swapped without touching UI code.
+ * provider (OpenStreetMap / Google Places / demo seed) can be swapped without
+ * touching UI code.
  */
 
 export const PLACE_CATEGORIES = [
@@ -86,7 +87,7 @@ export interface DayHours {
 }
 export type OpeningHours = DayHours[][];
 
-export type PlaceProviderId = "demo" | "google" | "manual";
+export type PlaceProviderId = "osm" | "demo" | "google" | "manual";
 
 export interface Place {
   id: string;

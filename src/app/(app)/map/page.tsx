@@ -114,6 +114,7 @@ export default async function MapPage({
                 <PlaceVisual
                   name={prepared.place.name}
                   category={prepared.place.category}
+                  cuisines={prepared.place.cuisines}
                   photoRef={prepared.place.photoRef}
                   size="thumb"
                   className="shrink-0"
@@ -157,9 +158,8 @@ export default async function MapPage({
       )}
 
       <p className="text-xs text-ink-muted">
-        The map is schematic (a projected Cyprus outline) so it works offline and without a tile
-        provider. Coordinates come from the places provider and can be opened in Google Maps from
-        any place page.
+        The map uses OpenStreetMap tiles. Allow device location to see yourself on the map, or set
+        a different Cyprus address, area, or coordinate pair as the distance starting point.
       </p>
     </div>
   );

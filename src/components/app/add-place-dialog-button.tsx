@@ -11,7 +11,7 @@ import type { ProviderInfo } from "@/lib/places";
  */
 export function AddPlaceDialogButton({
   label = "Add your first place",
-  provider = { id: "demo", label: "Demo Cyprus dataset", mode: "demo", configured: true },
+  provider = { id: "osm", label: "OpenStreetMap Cyprus", mode: "local", configured: true },
 }: {
   label?: string;
   provider?: ProviderInfo;

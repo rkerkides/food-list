@@ -27,6 +27,7 @@ export function RecommendationCard({
         <PlaceVisual
           name={place.name}
           category={place.category}
+          cuisines={place.cuisines}
           photoRef={place.photoRef}
           className="sm:h-auto sm:w-44 sm:shrink-0"
         />

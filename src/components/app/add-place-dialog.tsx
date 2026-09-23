@@ -336,6 +336,7 @@ export function AddPlaceDialog({
                     <PlaceVisual
                       name={result.name}
                       category={result.category}
+                      cuisines={result.cuisines}
                       photoRef={result.photoRef}
                       size="thumb"
                       className="shrink-0"
@@ -390,6 +391,7 @@ export function AddPlaceDialog({
                     <PlaceVisual
                       name={selected.name}
                       category={selected.category}
+                      cuisines={selected.cuisines}
                       photoRef={selected.photoRef}
                       size="thumb"
                     />
@@ -418,6 +420,11 @@ export function AddPlaceDialog({
                   </div>
                 </div>
 
+                <Alert variant="info" title="Make this a stronger recommendation">
+                  Cuisines, location and expected spend make future matching more useful. After a
+                  visit, add your own rating and at least one dish to teach Trapezi your taste.
+                </Alert>
+
                 {duplicate ? (
                   <Alert variant="error" title="Possible duplicate">
                     You already saved <strong>{duplicate.name}</strong>. Submit again to save it as a
@@ -441,15 +448,18 @@ export function AddPlaceDialog({
                   </Field>
                 </div>
 
-                <Field label="Cuisines" hint="Comma separated — overrides the provider wording.">
+                <Field
+                  label="Cuisines"
+                  hint="Comma separated — one of the strongest signals for taste matching."
+                >
                   <Input name="cuisines" defaultValue={selected.cuisines.join(", ")} />
                 </Field>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="City">
+                  <Field label="City" hint="Helps with nearby suggestions.">
                     <Input name="city" defaultValue={selected.city ?? ""} />
                   </Field>
-                  <Field label="Area">
+                  <Field label="Area" hint="Neighbourhood is even better.">
                     <Input name="area" defaultValue={selected.area ?? ""} />
                   </Field>
                 </div>
@@ -459,7 +469,7 @@ export function AddPlaceDialog({
                 </Field>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Expected spend from" hint="€ per person">
+                  <Field label="Expected spend from" hint="€ per person — for budget matching">
                     <Input
                       name="expectedSpendMin"
                       inputMode="decimal"
@@ -477,7 +487,10 @@ export function AddPlaceDialog({
                   </Field>
                 </div>
 
-                <Field label="Personal tags" hint="Comma separated, e.g. date night, work lunch">
+                <Field
+                  label="Personal tags"
+                  hint="Comma separated, e.g. date night or work lunch — useful when filtering."
+                >
                   <Input name="tags" placeholder="date night, book ahead" />
                 </Field>
 
@@ -519,6 +532,10 @@ export function AddPlaceDialog({
                   </Alert>
                 ) : null}
                 {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+                <Alert variant="info" title="Give this place useful signals">
+                  Add its cuisine, neighbourhood and expected spend now. When you visit, record
+                  your rating and a dish or two so recommendations can learn from it.
+                </Alert>
 
                 <Field label="Name">
                   <Input name="name" required placeholder="e.g. Yiayia's Kitchen" autoFocus />
@@ -543,25 +560,28 @@ export function AddPlaceDialog({
                     </Select>
                   </Field>
                 </div>
-                <Field label="Area">
+                <Field label="Area" hint="A neighbourhood helps with nearby suggestions.">
                   <Input name="area" placeholder="e.g. Strovolos" />
                 </Field>
                 <Field label="Address">
                   <Input name="address" placeholder="Street, number" />
                 </Field>
-                <Field label="Cuisines">
+                <Field label="Cuisines" hint="Comma separated — used for taste matching.">
                   <Input name="cuisines" placeholder="Cypriot, Grill" />
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Expected spend from" hint="€ per person">
+                  <Field label="Expected spend from" hint="€ per person — for budget matching">
                     <Input name="expectedSpendMin" inputMode="decimal" />
                   </Field>
                   <Field label="Expected spend to" hint="€ per person">
                     <Input name="expectedSpendMax" inputMode="decimal" />
                   </Field>
                 </div>
-                <Field label="Personal tags">
+                <Field label="Personal tags" hint="e.g. date night, work lunch">
                   <Input name="tags" placeholder="takeaway, cheap" />
+                </Field>
+                <Field label="Why I saved it" hint="A useful reminder before you have visited.">
+                  <Input name="savedReason" placeholder="A friend recommended the gyoza" />
                 </Field>
                 <Field label="Note">
                   <Textarea name="note" rows={2} />

@@ -78,8 +78,8 @@ export default async function HomePage() {
 
       {provider.mode === "demo" ? (
         <Alert variant="info" title="Running on demo data">
-          Search uses a bundled Cyprus dataset of fictional venues. Add a Google Places API key to
-          search live places (see the README) — everything else works the same.
+          Search uses a bundled Cyprus dataset of fictional venues. Run `npm run places:sync` to
+          import real Cyprus venues without an API key, or configure Google Places.
         </Alert>
       ) : null}
 
@@ -87,7 +87,7 @@ export default async function HomePage() {
         <EmptyState
           icon={UtensilsCrossed}
           title="Start with one place you have been meaning to try"
-          description="Search for a restaurant, cafe or bakery in Cyprus. We will pull in the address, hours, rating and price level, then you can add your own budget notes."
+          description="Search for a restaurant, cafe or bakery in Cyprus. We will fill in available address, hours and contact details, then you can add your own ratings and budget notes."
           action={<AddPlaceDialogButton />}
         />
       ) : null}
@@ -108,6 +108,7 @@ export default async function HomePage() {
             <PlaceVisual
               name={topPick.place.name}
               category={topPick.place.category}
+              cuisines={topPick.place.cuisines}
               photoRef={topPick.place.photoRef}
               className="sm:hidden"
             />
@@ -116,6 +117,7 @@ export default async function HomePage() {
                 <PlaceVisual
                   name={topPick.place.name}
                   category={topPick.place.category}
+                  cuisines={topPick.place.cuisines}
                   photoRef={topPick.place.photoRef}
                   size="thumb"
                   className="hidden shrink-0 sm:block"
@@ -191,6 +193,7 @@ export default async function HomePage() {
                   <PlaceVisual
                     name={place.name}
                     category={place.category}
+                    cuisines={place.cuisines}
                     photoRef={place.photoRef}
                     size="thumb"
                     className="shrink-0"
@@ -323,6 +326,7 @@ export default async function HomePage() {
                 <PlaceVisual
                   name={place.name}
                   category={place.category}
+                  cuisines={place.cuisines}
                   photoRef={place.photoRef}
                   size="thumb"
                   className="shrink-0"

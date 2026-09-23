@@ -116,7 +116,7 @@ export class GooglePlacesProvider implements PlaceProvider {
     if (!this.apiKey) {
       throw new PlaceProviderError(
         "invalid_request",
-        "GOOGLE_PLACES_API_KEY is not set. Configure it or use PLACES_PROVIDER=demo.",
+        "GOOGLE_PLACES_API_KEY is not set. Configure it or use PLACES_PROVIDER=osm.",
       );
     }
   }

@@ -238,4 +238,98 @@ create index if not exists place_refreshes_place_idx on place_refreshes(place_id
 `,
 };
 
-export const MIGRATIONS: Migration[] = [init];
+const osmCatalog: Migration = {
+  id: "0002",
+  name: "osm_catalog",
+  sqlite: `
+create table if not exists osm_places (
+  provider_place_id text primary key,
+  osm_type text not null,
+  osm_id text not null,
+  name text not null,
+  category text not null,
+  cuisines text not null default '[]',
+  address text,
+  city text,
+  area text,
+  district text,
+  latitude real not null,
+  longitude real not null,
+  website text,
+  phone text,
+  opening_hours text,
+  search_text text not null,
+  tags text not null default '{}',
+  imported_at text not null
+);
+create unique index if not exists osm_places_element_unique on osm_places(osm_type, osm_id);
+create index if not exists osm_places_city_idx on osm_places(city);
+create index if not exists osm_places_category_idx on osm_places(category);
+create index if not exists osm_places_name_idx on osm_places(name);
+
+create table if not exists osm_catalog_metadata (
+  key text primary key,
+  value text not null
+);
+`,
+  postgres: `
+create table if not exists osm_places (
+  provider_place_id text primary key,
+  osm_type text not null,
+  osm_id text not null,
+  name text not null,
+  category text not null,
+  cuisines text not null default '[]',
+  address text,
+  city text,
+  area text,
+  district text,
+  latitude double precision not null,
+  longitude double precision not null,
+  website text,
+  phone text,
+  opening_hours text,
+  search_text text not null,
+  tags text not null default '{}',
+  imported_at text not null
+);
+create unique index if not exists osm_places_element_unique on osm_places(osm_type, osm_id);
+create index if not exists osm_places_city_idx on osm_places(city);
+create index if not exists osm_places_category_idx on osm_places(category);
+create index if not exists osm_places_name_idx on osm_places(name);
+
+create table if not exists osm_catalog_metadata (
+  key text primary key,
+  value text not null
+);
+`,
+};
+
+const placeImageUploads: Migration = {
+  id: "0003",
+  name: "place_image_uploads",
+  sqlite: `
+create table if not exists place_image_uploads (
+  place_id text primary key references places(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  mime_type text not null,
+  data_base64 text not null,
+  byte_size integer not null,
+  updated_at text not null
+);
+create index if not exists place_image_uploads_user_idx on place_image_uploads(user_id);
+`,
+  postgres: `
+create table if not exists place_image_uploads (
+  place_id text primary key references places(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  mime_type text not null,
+  data_base64 text not null,
+  byte_size integer not null,
+  updated_at text not null
+);
+create index if not exists place_image_uploads_user_idx on place_image_uploads(user_id);
+`,
+};
+
+export const MIGRATIONS: Migration[] = [init, osmCatalog, placeImageUploads];

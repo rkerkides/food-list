@@ -37,13 +37,24 @@ export function AppShell({
         {children}
       </main>
 
-      <footer className="hidden border-t border-line px-6 py-6 text-xs text-ink-muted md:block">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <span>
+      <footer className="border-t border-line px-4 py-6 pb-24 text-xs text-ink-muted sm:px-6 md:pb-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
+          <span className="hidden md:inline">
             Signed in as {user.name}
             {user.isDemo ? " (demo account)" : ""}.
           </span>
-          <span>Trapezi — your personal Cyprus food map.</span>
+          <span>
+            Trapezi — your personal Cyprus food map.
+            {" · "}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              © OpenStreetMap contributors
+            </a>
+          </span>
         </div>
       </footer>
 

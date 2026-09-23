@@ -34,7 +34,7 @@ const optionalNumber = (min?: number, max?: number) =>
     .optional();
 
 export const placeSearchResultSchema = z.object({
-  provider: z.enum(["demo", "google", "manual"]),
+  provider: z.enum(["osm", "demo", "google", "manual"]),
   providerPlaceId: z.string().min(1),
   name: z.string().min(1),
   category: z.enum(PLACE_CATEGORIES),

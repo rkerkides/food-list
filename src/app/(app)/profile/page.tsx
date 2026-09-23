@@ -162,8 +162,12 @@ export default async function ProfilePage() {
             <dt className="text-xs text-ink-muted">Places provider</dt>
             <dd className="flex items-center gap-2 font-medium">
               {provider.label}
-              <Badge variant={providerId === "google" ? "olive" : "default"} size="sm">
-                {providerId === "google" ? "Live" : "Demo data"}
+              <Badge variant={providerId !== "demo" ? "olive" : "default"} size="sm">
+                {providerId === "google"
+                  ? "Live"
+                  : providerId === "osm"
+                    ? "Local OSM"
+                    : "Demo data"}
               </Badge>
             </dd>
           </div>
