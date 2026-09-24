@@ -1,5 +1,6 @@
 import type { Repositories } from "@/lib/data/repositories";
 import { deriveProviderBudget } from "@/lib/domain/budget";
+import { googleMapsCoordinatesFromUrl } from "@/lib/domain/place-links";
 import { findDuplicate, mergeExternalPlaceData } from "@/lib/domain/place-merge";
 import type { AddPlaceInput, ManualPlaceInput, UpdatePlaceInput } from "@/lib/domain/schemas";
 import type { Place, PlaceSearchResult, PlaceStatus } from "@/lib/domain/types";
@@ -67,7 +68,7 @@ export async function addPlaceFromProvider(
     publicRating: result.publicRating ?? null,
     publicRatingCount: result.publicRatingCount ?? null,
     priceLevel: result.priceLevel ?? null,
-    googleMapsUrl: null,
+    googleMapsUrl: input.googleMapsUrl ?? null,
     website,
     phone,
     openingHours: result.openingHours ?? null,
@@ -112,6 +113,7 @@ export async function addPlaceFromProvider(
   if (address !== (result.address ?? null)) base.overrides.push("address");
   if (website !== (result.website ?? null)) base.overrides.push("website");
   if (phone !== (result.phone ?? null)) base.overrides.push("phone");
+  if (input.googleMapsUrl) base.overrides.push("googleMapsUrl");
 
   const created = await repo.places.insert(base);
   return {
@@ -133,6 +135,7 @@ export async function createManualPlace(
 ): Promise<AddPlaceOutcome> {
   const repo = repos ?? (await defaultRepositories());
   const existing = await repo.places.listByUser(userId);
+  const mapCoordinates = googleMapsCoordinatesFromUrl(input.googleMapsUrl);
   const candidate: PlaceSearchResult = {
     provider: "manual",
     providerPlaceId: `manual-${newId("m")}`,
@@ -143,8 +146,8 @@ export async function createManualPlace(
     city: input.city ?? null,
     area: input.area ?? null,
     district: input.district ?? null,
-    latitude: input.latitude ?? null,
-    longitude: input.longitude ?? null,
+    latitude: input.latitude ?? mapCoordinates?.latitude ?? null,
+    longitude: input.longitude ?? mapCoordinates?.longitude ?? null,
     publicRating: null,
     publicRatingCount: null,
     priceLevel: null,
@@ -185,7 +188,7 @@ export async function createManualPlace(
     publicRating: null,
     publicRatingCount: null,
     priceLevel: null,
-    googleMapsUrl: null,
+    googleMapsUrl: input.googleMapsUrl ?? null,
     website: candidate.website,
     phone: candidate.phone,
     openingHours: null,
@@ -199,7 +202,13 @@ export async function createManualPlace(
     note: input.note ?? null,
     savedReason: input.savedReason ?? null,
     tags: input.tags ?? [],
-    overrides: ["name", "category", "cuisines", "address"],
+    overrides: [
+      "name",
+      "category",
+      "cuisines",
+      "address",
+      ...(input.googleMapsUrl ? (["googleMapsUrl"] as const) : []),
+    ],
     status: input.status ?? "saved",
     savedAt: now,
     createdAt: now,

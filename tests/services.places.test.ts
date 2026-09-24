@@ -107,6 +107,24 @@ describe("place management", () => {
     expect(outcome.place.overrides).toContain("name");
   });
 
+  it("keeps a Google Maps link and derives coordinates for a manual place", async () => {
+    const { repos, userId } = await createTestContext();
+    const googleMapsUrl =
+      "https://www.google.com/maps/place/KONA+KAI/@35.1707098,33.3735758,17z/data=!3m1!4b1!4m6!3m5!1s0x14de19dc2253f107:0xa552f54e2c512746!8m2!3d35.1707054!4d33.3761561";
+    const outcome = await createManualPlace(
+      userId,
+      { name: "KONA KAI", category: "restaurant", googleMapsUrl },
+      repos,
+    );
+
+    expect(outcome.status).toBe("created");
+    if (outcome.status !== "created") throw new Error("expected creation");
+    expect(outcome.place.googleMapsUrl).toBe(googleMapsUrl);
+    expect(outcome.place.latitude).toBeCloseTo(35.1707054);
+    expect(outcome.place.longitude).toBeCloseTo(33.3761561);
+    expect(outcome.place.overrides).toContain("googleMapsUrl");
+  });
+
   it("keeps user edits when external data is refreshed", async () => {
     const { repos, userId } = await createTestContext();
     const created = await addPlaceFromProvider(userId, { result: providerResult }, repos);

@@ -5,6 +5,35 @@ type LinkablePlace = Pick<
   "name" | "address" | "area" | "city" | "latitude" | "longitude" | "googleMapsUrl"
 > & Partial<Pick<Place, "provider" | "providerPlaceId">>;
 
+export interface MapCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Reads the coordinates embedded in shareable Google Maps place URLs. Short
+ * links deliberately return null: resolving them would require a network call.
+ */
+export function googleMapsCoordinatesFromUrl(value: string | null | undefined): MapCoordinates | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const source = `${url.pathname}${url.search}`;
+    const exactPin = source.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    const visibleMap = source.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    const match = exactPin ?? visibleMap;
+    if (!match) return null;
+
+    const latitude = Number(match[1]);
+    const longitude = Number(match[2]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+    return { latitude, longitude };
+  } catch {
+    return null;
+  }
+}
+
 /** Universal Google Maps links do not require an API key. */
 export function googleMapsPlaceUrl(place: LinkablePlace): string {
   if (place.googleMapsUrl) return place.googleMapsUrl;

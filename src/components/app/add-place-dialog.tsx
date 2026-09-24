@@ -159,6 +159,7 @@ export function AddPlaceDialog({
       city: readString(form.get("city")),
       area: readString(form.get("area")),
       address: readString(form.get("address")),
+      googleMapsUrl: readString(form.get("googleMapsUrl")),
       cuisines: detailsCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
@@ -194,6 +195,7 @@ export function AddPlaceDialog({
       city: (readString(form.get("city")) as never) ?? null,
       area: readString(form.get("area")),
       address: readString(form.get("address")),
+      googleMapsUrl: readString(form.get("googleMapsUrl")),
       cuisines: manualCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
@@ -472,6 +474,17 @@ export function AddPlaceDialog({
                   <Input name="address" defaultValue={selected.address ?? ""} />
                 </Field>
 
+                <Field
+                  label="Google Maps link"
+                  hint="Optional. Paste a place link to preserve the exact listing."
+                >
+                  <Input
+                    name="googleMapsUrl"
+                    type="url"
+                    placeholder="https://www.google.com/maps/place/..."
+                  />
+                </Field>
+
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Expected spend from" hint="€ per person — for budget matching">
                     <Input
@@ -569,6 +582,16 @@ export function AddPlaceDialog({
                 </Field>
                 <Field label="Address">
                   <Input name="address" placeholder="Street, number" />
+                </Field>
+                <Field
+                  label="Google Maps link"
+                  hint="Optional. A full place URL can add its map coordinates automatically."
+                >
+                  <Input
+                    name="googleMapsUrl"
+                    type="url"
+                    placeholder="https://www.google.com/maps/place/..."
+                  />
                 </Field>
                 <Field label="Cuisines" hint="Use the shared catalogue for consistent taste matching.">
                   <CuisinePicker value={manualCuisines} onChange={setManualCuisines} disabled={submitting} />
