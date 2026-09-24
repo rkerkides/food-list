@@ -80,9 +80,6 @@ export default async function PlacesPage({
             {query.city ? ` · filtered to ${query.city}` : ""}
           </p>
         </div>
-        <div className="lg:hidden">
-          <AddPlaceDialogButton label="Add place" provider={provider} />
-        </div>
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">

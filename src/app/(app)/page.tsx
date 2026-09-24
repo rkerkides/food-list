@@ -43,36 +43,40 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-8 sm:space-y-10">
-      <section className="space-y-5">
-        <div className="space-y-1">
-          <p className="text-sm text-ink-muted">
-            {greeting}, {firstName}
-          </p>
-          <h1 className="font-display text-3xl leading-tight font-semibold text-balance sm:text-4xl">
-            Where should we eat?
-          </h1>
-          {counts.places > 0 ? (
+      <section className="surface-highlight relative overflow-hidden rounded-[calc(var(--radius-card)+8px)] border border-line p-5 shadow-[var(--shadow-card)] sm:p-7">
+        <div className="pointer-events-none absolute -right-14 -top-20 size-56 rounded-full bg-clay-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-52 rounded-full bg-olive-200/25 blur-3xl" />
+        <div className="relative space-y-5">
+          <div className="space-y-1.5">
             <p className="text-sm text-ink-muted">
-              {counts.places} places saved · {counts.visits} visits · {counts.dishes} dishes
-              remembered
+              {greeting}, {firstName}
             </p>
-          ) : null}
-        </div>
+            <h1 className="font-display text-3xl leading-tight font-semibold text-balance sm:text-5xl">
+              Where should we eat?
+            </h1>
+            {counts.places > 0 ? (
+              <p className="text-sm text-ink-muted">
+                {counts.places} places saved · {counts.visits} visits · {counts.dishes} dishes
+                remembered
+              </p>
+            ) : null}
+          </div>
 
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
-          {QUICK_CHIPS.map((chip) => {
-            const Icon = chip.icon;
-            return (
-              <Link
-                key={chip.label}
-                href={chip.href}
-                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 py-2 text-sm font-medium text-ink-soft shadow-sm transition hover:-translate-y-0.5 hover:text-ink"
-              >
-                <Icon className="size-3.5 text-clay-600" />
-                {chip.label}
-              </Link>
-            );
-          })}
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+            {QUICK_CHIPS.map((chip) => {
+              const Icon = chip.icon;
+              return (
+                <Link
+                  key={chip.label}
+                  href={chip.href}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 py-2 text-sm font-medium text-ink-soft shadow-sm transition hover:-translate-y-0.5 hover:text-ink"
+                >
+                  <Icon className="size-3.5 text-clay-600" />
+                  {chip.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </section>
 

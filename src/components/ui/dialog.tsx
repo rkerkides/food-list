@@ -24,9 +24,9 @@ export function DialogContent({
         className={cn(
           "fixed z-50 bg-canvas shadow-[var(--shadow-float)] focus:outline-none",
           // Mobile: bottom sheet that nearly fills the screen.
-          "inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-3xl border-t border-line",
+          "inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-3xl border-t border-line before:mx-auto before:mt-2.5 before:block before:h-1 before:w-10 before:rounded-full before:bg-line-strong",
           // Desktop: centred panel.
-          "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border",
+          "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border sm:before:hidden",
           "data-[state=open]:animate-scale-in",
           className,
         )}

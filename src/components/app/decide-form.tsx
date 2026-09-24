@@ -80,7 +80,7 @@ export function DecideForm({
   const toggle = <T,>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
 
-  const useDeviceLocation = React.useCallback(() => {
+  const requestDeviceLocation = React.useCallback(() => {
     if (!navigator.geolocation) {
       setLocationState("error");
       setLocationMessage("This browser cannot provide your location. Choose an area or enter an address instead.");
@@ -107,11 +107,6 @@ export function DecideForm({
       { enableHighAccuracy: false, maximumAge: 120_000, timeout: 8_000 },
     );
   }, []);
-
-  React.useEffect(() => {
-    if (initial.area || initial.originLatitude != null || initial.originLongitude != null) return;
-    useDeviceLocation();
-  }, [initial.area, initial.originLatitude, initial.originLongitude, useDeviceLocation]);
 
   async function useAddress() {
     const query = address.trim();
@@ -175,7 +170,7 @@ export function DecideForm({
             ))}
           </Select>
           <div className="space-y-2 rounded-xl bg-surface-muted p-2.5">
-            <Button type="button" variant="subtle" size="sm" onClick={useDeviceLocation} disabled={locationState === "finding"}>
+            <Button type="button" variant="subtle" size="sm" onClick={requestDeviceLocation} disabled={locationState === "finding"}>
               {locationState === "finding" ? <Loader2 className="size-3.5 animate-spin" /> : <Crosshair className="size-3.5" />}
               Use my device location
             </Button>

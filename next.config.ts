@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 const standaloneOutput = process.env.BUILD_TARGET === "docker";
 
 const nextConfig: NextConfig = {
+  // Keep development tooling from generating agent-instruction files in the repository.
+  agentRules: false,
   output: standaloneOutput ? "standalone" : undefined,
   // better-sqlite3 and pg are native/node-only modules used inside the server runtime.
   serverExternalPackages: ["better-sqlite3", "pg"],

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Warm, appetising neutral base ------------------------------------- */
+  /* A sunlit, Mediterranean base with enough contrast for long sessions. */
   --color-canvas: oklch(0.981 0.008 84);
   --color-canvas-deep: oklch(0.962 0.013 84);
   --color-surface: oklch(1 0 0);
@@ -44,10 +44,10 @@
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
     "Times New Roman", serif;
 
-  --radius-card: 1.125rem;
+  --radius-card: 1.25rem;
 
-  --shadow-card: 0 1px 2px oklch(0.4 0.03 60 / 0.05), 0 8px 24px -12px oklch(0.4 0.04 60 / 0.18);
-  --shadow-float: 0 2px 6px oklch(0.4 0.03 60 / 0.06), 0 24px 48px -24px oklch(0.35 0.05 60 / 0.32);
+  --shadow-card: 0 1px 2px oklch(0.4 0.03 60 / 0.04), 0 10px 30px -18px oklch(0.4 0.04 60 / 0.2);
+  --shadow-float: 0 3px 8px oklch(0.4 0.03 60 / 0.08), 0 28px 60px -28px oklch(0.35 0.05 60 / 0.36);
   --shadow-nav: 0 -1px 0 oklch(0.9 0.015 78 / 0.9), 0 -12px 32px -20px oklch(0.4 0.04 60 / 0.35);
 }
 
@@ -62,7 +62,11 @@
   }
 
   body {
-    background-color: var(--color-canvas);
+    min-width: 320px;
+    background:
+      radial-gradient(circle at 8% -10%, oklch(0.95 0.035 71 / 0.52), transparent 28rem),
+      radial-gradient(circle at 94% 12%, oklch(0.94 0.025 122 / 0.38), transparent 26rem),
+      var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -91,6 +95,14 @@
     opacity: 0.55;
     cursor: pointer;
   }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer utilities {
@@ -112,6 +124,20 @@
 
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .page-enter > * {
+    animation: rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .page-enter > *:nth-child(2) { animation-delay: 40ms; }
+  .page-enter > *:nth-child(3) { animation-delay: 80ms; }
+  .page-enter > *:nth-child(4) { animation-delay: 120ms; }
+
+  .surface-highlight {
+    background:
+      linear-gradient(130deg, oklch(0.982 0.014 52 / 0.95), oklch(1 0 0 / 0.92) 48%, oklch(0.972 0.014 118 / 0.82)),
+      var(--color-surface);
   }
 
   .animate-rise {

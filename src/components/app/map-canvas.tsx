@@ -120,14 +120,18 @@ export function MapCanvas({
   }, []);
 
   React.useEffect(() => {
-    const saved = readStartingPoint();
-    if (saved) setStartingPoint(saved);
-    requestDeviceLocation();
-  }, [requestDeviceLocation]);
+    // A saved point is restored quietly; device location always remains an explicit choice.
+    const timer = window.setTimeout(() => {
+      const saved = readStartingPoint();
+      if (saved) setStartingPoint(saved);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   React.useEffect(() => {
     let disposed = false;
     let map: Leaflet.Map | null = null;
+    const markers = markerRefs.current;
 
     void import("leaflet").then((L) => {
       if (disposed || !containerRef.current) return;
@@ -159,7 +163,7 @@ export function MapCanvas({
       mapRef.current = null;
       markerLayerRef.current = null;
       locationLayerRef.current = null;
-      markerRefs.current.clear();
+      markers.clear();
     };
   }, []);
 

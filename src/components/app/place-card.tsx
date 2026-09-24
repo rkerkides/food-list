@@ -35,18 +35,18 @@ export function PlaceCard({
     <Link
       href={`/places/${place.id}`}
       className={cn(
-        "group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]",
+        "group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-all duration-300 hover:-translate-y-1 hover:border-line-strong hover:shadow-[var(--shadow-float)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay-500",
         className,
       )}
     >
-      <div className="relative">
+      <div className="relative overflow-hidden">
         <PlaceVisual
           name={place.name}
           category={place.category}
           cuisines={place.cuisines}
           photoRef={place.photoRef}
           size={compact ? "card" : "card"}
-          className={compact ? "aspect-[16/9]" : undefined}
+          className={cn("transition duration-500 group-hover:scale-[1.025]", compact ? "aspect-[16/9]" : undefined)}
         />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           {place.status === "wishlist" || place.status === "favourite" ? (

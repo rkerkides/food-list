@@ -22,14 +22,14 @@ export function RecommendationCard({
   const context = reasons.filter((reason) => reason.sentiment === "neutral").slice(0, 2);
 
   return (
-    <article className="overflow-hidden rounded-[calc(var(--radius-card)+4px)] border border-line bg-surface shadow-[var(--shadow-card)]">
+    <article className="overflow-hidden rounded-[calc(var(--radius-card)+4px)] border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-float)]">
       <div className="flex flex-col sm:flex-row">
         <PlaceVisual
           name={place.name}
           category={place.category}
           cuisines={place.cuisines}
           photoRef={place.photoRef}
-          className="sm:h-auto sm:w-44 sm:shrink-0"
+          className="aspect-[16/9] sm:h-auto sm:w-48 sm:shrink-0"
         />
         <div className="min-w-0 flex-1 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -49,7 +49,7 @@ export function RecommendationCard({
                   .join(" · ")}
               </p>
             </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-clay-50 px-3 py-1 text-sm font-semibold text-clay-800">
+            <span className="inline-flex items-center gap-1 rounded-full border border-clay-100 bg-clay-50 px-3 py-1 text-sm font-semibold text-clay-800">
               <TrendingUp className="size-3.5" />
               {matchPercent}% match
             </span>
