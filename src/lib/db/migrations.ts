@@ -415,6 +415,43 @@ create index if not exists cuisine_catalog_user_idx on cuisine_catalog(user_id, 
 `,
 };
 
+const venueLinkSubmissions: Migration = {
+  id: "0007",
+  name: "venue_link_submissions",
+  sqlite: `
+create table if not exists venue_link_submissions (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  google_maps_url text not null,
+  note text,
+  latitude real,
+  longitude real,
+  status text not null default 'pending',
+  review_note text,
+  reviewed_by text references users(id) on delete set null,
+  reviewed_at text,
+  created_at text not null
+);
+create index if not exists venue_link_submissions_status_idx on venue_link_submissions(status, created_at asc);
+`,
+  postgres: `
+create table if not exists venue_link_submissions (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  google_maps_url text not null,
+  note text,
+  latitude double precision,
+  longitude double precision,
+  status text not null default 'pending',
+  review_note text,
+  reviewed_by text references users(id) on delete set null,
+  reviewed_at text,
+  created_at text not null
+);
+create index if not exists venue_link_submissions_status_idx on venue_link_submissions(status, created_at asc);
+`,
+};
+
 export const MIGRATIONS: Migration[] = [
   init,
   osmCatalog,
@@ -422,4 +459,5 @@ export const MIGRATIONS: Migration[] = [
   sharedCircles,
   placeGoogleMapsUrl,
   cuisineCatalog,
+  venueLinkSubmissions,
 ];

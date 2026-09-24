@@ -6,11 +6,16 @@ import {
   addPlaceSchema,
   manualPlaceSchema,
   updatePlaceSchema,
+  venueLinkSubmissionSchema,
   type AddPlaceInput,
   type ManualPlaceInput,
   type UpdatePlaceInput,
 } from "@/lib/domain/schemas";
-import type { PlaceStatus } from "@/lib/domain/types";
+import {
+  VENUE_LINK_SUBMISSION_STATUSES,
+  type PlaceStatus,
+  type VenueLinkSubmissionStatus,
+} from "@/lib/domain/types";
 import {
   addPlaceFromProvider,
   createManualPlace,
@@ -20,6 +25,26 @@ import {
   updatePlace,
 } from "@/lib/services/places";
 import { validateCuisines } from "@/lib/services/cuisines";
+import { reviewVenueLink, submitVenueLink } from "@/lib/services/venue-link-submissions";
+
+export async function submitVenueLinkAction(input: { googleMapsUrl: string; note?: string | null }) {
+  const user = await requireUser();
+  const parsed = venueLinkSubmissionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Enter a valid link." };
+  await submitVenueLink(user.id, parsed.data);
+  revalidatePath("/profile/review-queue");
+  return { ok: true as const };
+}
+
+export async function reviewVenueLinkAction(id: string, status: VenueLinkSubmissionStatus, reviewNote: string | null) {
+  const user = await requireUser();
+  if (!(VENUE_LINK_SUBMISSION_STATUSES as readonly string[]).includes(status)) {
+    return { ok: false as const, error: "Choose a valid review status." };
+  }
+  await reviewVenueLink(id, user.id, status, reviewNote);
+  revalidatePath("/profile/review-queue");
+  return { ok: true as const };
+}
 
 export type AddPlaceResult =
   | { ok: true; placeId: string }

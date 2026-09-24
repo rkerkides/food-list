@@ -15,7 +15,7 @@ import { listCuisineCatalog } from "@/lib/services/cuisines";
 import { describeProvider, resolveProviderId } from "@/lib/places";
 import { formatBudgetRange, formatRating, titleCase } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { Compass, ListChecks, Sparkles, UtensilsCrossed } from "lucide-react";
+import { ClipboardList, Compass, ListChecks, Sparkles, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = { title: "Profile" };
@@ -206,6 +206,12 @@ export default async function ProfilePage() {
             <Link href="/profile/data-status">
               <ListChecks className="size-4" />
               Data status
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/profile/review-queue">
+              <ClipboardList className="size-4" />
+              Review queue
             </Link>
           </Button>
           <SignOutButton />

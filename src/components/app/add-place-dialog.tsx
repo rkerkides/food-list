@@ -22,7 +22,7 @@ import { formatBudgetRange, formatRating } from "@/lib/utils/format";
 import { ArrowLeft, Check, Loader2, MapPin, Plus, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { addPlaceAction, createManualPlaceAction } from "@/app/actions/places";
+import { addPlaceAction, createManualPlaceAction, submitVenueLinkAction } from "@/app/actions/places";
 import { PlaceVisual } from "./place-visual";
 import { CuisinePicker } from "./cuisine-picker";
 
@@ -45,7 +45,7 @@ export function AddPlaceDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [step, setStep] = React.useState<"search" | "details" | "manual">("search");
+  const [step, setStep] = React.useState<"search" | "details" | "manual" | "submit-link">("search");
   const [query, setQuery] = React.useState("");
   const [city, setCity] = React.useState<string>("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
@@ -56,6 +56,7 @@ export function AddPlaceDialog({
   const [duplicate, setDuplicate] = React.useState<DuplicateWarning | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [linkSubmitted, setLinkSubmitted] = React.useState(false);
   const [detailsCuisines, setDetailsCuisines] = React.useState<string[]>([]);
   const [manualCuisines, setManualCuisines] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -67,6 +68,7 @@ export function AddPlaceDialog({
     setSelected(null);
     setDuplicate(null);
     setSubmitError(null);
+    setLinkSubmitted(false);
     setSearchError(null);
     setProviderNote(null);
     setDetailsCuisines([]);
@@ -218,6 +220,25 @@ export function AddPlaceDialog({
     setSubmitError(outcome.error);
   }
 
+  async function handleLinkSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const outcome = await submitVenueLinkAction({
+      googleMapsUrl: readString(form.get("googleMapsUrl")) ?? "",
+      note: readString(form.get("note")),
+    });
+
+    setSubmitting(false);
+    if (!outcome.ok) {
+      setSubmitError(outcome.error);
+      return;
+    }
+    setLinkSubmitted(true);
+  }
+
   function finish(placeId: string) {
     handleOpenChange(false);
     router.refresh();
@@ -265,12 +286,18 @@ export function AddPlaceDialog({
                 </Button>
                 <div>
                   <DialogTitle className="text-xl">
-                    {step === "manual" ? "Add it by hand" : selected?.name}
+                    {step === "manual"
+                      ? "Add it by hand"
+                      : step === "submit-link"
+                        ? "Submit a venue link"
+                        : selected?.name}
                   </DialogTitle>
                   <p className="text-xs text-ink-muted">
                     {step === "manual"
                       ? "For places the provider does not know about."
-                      : providerNote ?? `Details fetched from ${providerLabel(provider)}`}
+                      : step === "submit-link"
+                        ? "Send a Google Maps place link for review and enrichment."
+                        : providerNote ?? `Details fetched from ${providerLabel(provider)}`}
                   </p>
                 </div>
               </div>
@@ -389,7 +416,68 @@ export function AddPlaceDialog({
               >
                 Can’t find it? Add the place manually
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-ink-soft"
+                onClick={() => {
+                  setStep("submit-link");
+                  setSubmitError(null);
+                  setLinkSubmitted(false);
+                }}
+              >
+                Have a Google Maps link? Submit it for review
+              </Button>
             </DialogBody>
+          ) : null}
+
+          {step === "submit-link" ? (
+            linkSubmitted ? (
+              <>
+                <DialogBody className="space-y-4">
+                  <Alert variant="success" title="Venue queued for review">
+                    Thanks — the link is now in the venue queue. A reviewer can fill in the details
+                    before it is added to the shared list.
+                  </Alert>
+                </DialogBody>
+                <DialogFooter>
+                  <Button type="button" onClick={() => handleOpenChange(false)}>
+                    Done
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : (
+              <form onSubmit={handleLinkSubmit}>
+                <DialogBody className="space-y-4">
+                  <Alert variant="info" title="A quick way to suggest a venue">
+                    Paste the exact Google Maps place link. We will retain its coordinates when
+                    available, then review and populate the venue details.
+                  </Alert>
+                  {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+                  <Field label="Google Maps link" hint="Use a link for a specific place, not a search page.">
+                    <Input
+                      name="googleMapsUrl"
+                      type="url"
+                      required
+                      autoFocus
+                      placeholder="https://www.google.com/maps/place/..."
+                    />
+                  </Field>
+                  <Field label="Anything we should know?" hint="Optional — cuisine, why it is worth adding, or any details you noticed.">
+                    <Textarea name="note" rows={3} maxLength={1000} placeholder="Great seafood spot near the marina" />
+                  </Field>
+                </DialogBody>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setStep("search")}>
+                    Back to search
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Submit for review
+                  </Button>
+                </DialogFooter>
+              </form>
+            )
           ) : null}
 
           {step === "details" && selected ? (

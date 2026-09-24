@@ -2,6 +2,7 @@ import { ensureMigrations, getDb, type SqlClient } from "@/lib/db";
 import { encodeJson, type SqlValue } from "@/lib/db/sql-client";
 import { newId } from "@/lib/utils/ids";
 import type { Place, Visit, FoodItem } from "@/lib/domain/types";
+import type { VenueLinkSubmission, VenueLinkSubmissionStatus } from "@/lib/domain/types";
 import {
   FOOD_ITEM_COLUMNS,
   PLACE_COLUMNS,
@@ -423,7 +424,31 @@ export function createRepositories(db: SqlClient = getDb()) {
     },
   };
 
-  return { db, users, sessions, places, cuisines, visits, foodItems, refreshes, circles };
+  const venueLinkSubmissions = {
+    async create(input: { userId: string; googleMapsUrl: string; note: string | null; latitude: number | null; longitude: number | null }) {
+      const id = newId("submission");
+      const createdAt = new Date().toISOString();
+      await db.run(
+        "insert into venue_link_submissions (id, user_id, google_maps_url, note, latitude, longitude, status, created_at) values (?, ?, ?, ?, ?, ?, 'pending', ?)",
+        [id, input.userId, input.googleMapsUrl, input.note, input.latitude, input.longitude, createdAt],
+      );
+      return id;
+    },
+    async listAll(): Promise<VenueLinkSubmission[]> {
+      const rows = await db.all<{
+        id: string; user_id: string; submitter_name: string; google_maps_url: string; note: string | null;
+        latitude: number | null; longitude: number | null; status: string; review_note: string | null;
+        reviewed_by: string | null; reviewed_at: string | null; created_at: string;
+      }>(`select s.*, u.name as submitter_name from venue_link_submissions s join users u on u.id = s.user_id
+          order by case s.status when 'pending' then 0 when 'in_review' then 1 else 2 end, s.created_at asc`);
+      return rows.map((row) => ({ id: row.id, userId: row.user_id, submitterName: row.submitter_name, googleMapsUrl: row.google_maps_url, note: row.note, latitude: row.latitude, longitude: row.longitude, status: row.status as VenueLinkSubmissionStatus, reviewNote: row.review_note, reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at, createdAt: row.created_at }));
+    },
+    async update(id: string, reviewerId: string, input: { status: VenueLinkSubmissionStatus; reviewNote: string | null }) {
+      await db.run("update venue_link_submissions set status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? where id = ?", [input.status, input.reviewNote, reviewerId, new Date().toISOString(), id]);
+    },
+  };
+
+  return { db, users, sessions, places, cuisines, visits, foodItems, refreshes, circles, venueLinkSubmissions };
 }
 
 export type Repositories = ReturnType<typeof createRepositories>;

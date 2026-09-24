@@ -103,6 +103,17 @@ export const manualPlaceSchema = z.object({
   force: z.boolean().optional(),
 });
 
+export const venueLinkSubmissionSchema = z.object({
+  googleMapsUrl: z
+    .string()
+    .url("Paste a valid Google Maps URL")
+    .refine((value) => {
+      const host = new URL(value).hostname.toLowerCase();
+      return host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".google.com") || host === "google.com";
+    }, "Paste a Google Maps place link"),
+  note: optionalString.pipe(z.string().max(1000).nullable().optional()),
+});
+
 export const updatePlaceSchema = z.object({
   name: z.string().trim().min(1).optional(),
   category: z.enum(PLACE_CATEGORIES).optional(),
@@ -178,6 +189,7 @@ export const credentialsSchema = z.object({
 
 export type AddPlaceInput = z.infer<typeof addPlaceSchema>;
 export type ManualPlaceInput = z.infer<typeof manualPlaceSchema>;
+export type VenueLinkSubmissionInput = z.infer<typeof venueLinkSubmissionSchema>;
 export type UpdatePlaceInput = z.infer<typeof updatePlaceSchema>;
 export type VisitInput = z.infer<typeof visitSchema>;
 export type DecideInput = z.infer<typeof decideSchema>;

@@ -89,6 +89,24 @@ export type OpeningHours = DayHours[][];
 
 export type PlaceProviderId = "osm" | "demo" | "google" | "manual";
 
+export const VENUE_LINK_SUBMISSION_STATUSES = ["pending", "in_review", "completed", "declined"] as const;
+export type VenueLinkSubmissionStatus = (typeof VENUE_LINK_SUBMISSION_STATUSES)[number];
+
+export interface VenueLinkSubmission {
+  id: string;
+  userId: string;
+  submitterName: string;
+  googleMapsUrl: string;
+  note: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  status: VenueLinkSubmissionStatus;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export interface Place {
   id: string;
   userId: string;
