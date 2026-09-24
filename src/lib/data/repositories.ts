@@ -12,6 +12,7 @@ import {
   toPlace,
   toVisit,
   type FoodItemRow,
+  type CuisineCatalogRow,
   type PlaceRefreshRow,
   type PlaceRow,
   type SessionRow,
@@ -142,6 +143,39 @@ export function createRepositories(db: SqlClient = getDb()) {
         [userId],
       );
       return Number(row?.count ?? 0);
+    },
+  };
+
+  const cuisines = {
+    async listActive(userId: string) {
+      return db.all<CuisineCatalogRow>(
+        "select * from cuisine_catalog where user_id = ? order by name asc",
+        [userId],
+      );
+    },
+    async findById(userId: string, id: string) {
+      return db.get<CuisineCatalogRow>(
+        "select * from cuisine_catalog where user_id = ? and id = ?",
+        [userId, id],
+      );
+    },
+    async create(userId: string, name: string, normalizedName: string) {
+      const id = newId("cuisine");
+      const now = new Date().toISOString();
+      await db.run(
+        "insert into cuisine_catalog (id, user_id, name, normalized_name, created_at, updated_at) values (?, ?, ?, ?, ?, ?)",
+        [id, userId, name, normalizedName, now, now],
+      );
+      return (await cuisines.findById(userId, id)) as CuisineCatalogRow;
+    },
+    async rename(userId: string, id: string, name: string, normalizedName: string) {
+      await db.run(
+        "update cuisine_catalog set name = ?, normalized_name = ?, updated_at = ? where user_id = ? and id = ?",
+        [name, normalizedName, new Date().toISOString(), userId, id],
+      );
+    },
+    async remove(userId: string, id: string) {
+      await db.run("delete from cuisine_catalog where user_id = ? and id = ?", [userId, id]);
     },
   };
 
@@ -296,6 +330,65 @@ export function createRepositories(db: SqlClient = getDb()) {
     },
   };
 
+  const circles = {
+    async listForUser(userId: string) {
+      return db.all<{
+        id: string;
+        name: string;
+        owner_user_id: string;
+        owner_name: string;
+        member_count: number;
+      }>(
+        `select c.id, c.name, c.owner_user_id, owner.name as owner_name, count(members.user_id) as member_count
+         from shared_circles c
+         join shared_circle_members mine on mine.circle_id = c.id and mine.user_id = ?
+         join users owner on owner.id = c.owner_user_id
+         join shared_circle_members members on members.circle_id = c.id
+         group by c.id, c.name, c.owner_user_id, owner.name
+         order by c.created_at desc`,
+        [userId],
+      );
+    },
+    async create(ownerUserId: string, name: string) {
+      const id = newId("circle");
+      const now = new Date().toISOString();
+      await db.run(
+        "insert into shared_circles (id, owner_user_id, name, created_at) values (?, ?, ?, ?)",
+        [id, ownerUserId, name.trim(), now],
+      );
+      await db.run(
+        "insert into shared_circle_members (circle_id, user_id, role, joined_at) values (?, ?, 'owner', ?)",
+        [id, ownerUserId, now],
+      );
+      return id;
+    },
+    async addMemberByEmail(circleId: string, actorUserId: string, email: string) {
+      const circle = await db.get<{ owner_user_id: string }>(
+        "select owner_user_id from shared_circles where id = ?",
+        [circleId],
+      );
+      if (!circle) return { status: "not_found" as const };
+      if (circle.owner_user_id !== actorUserId) return { status: "forbidden" as const };
+      const user = await users.findByEmail(email);
+      if (!user) return { status: "user_not_found" as const };
+      await db.run(
+        "insert into shared_circle_members (circle_id, user_id, role, joined_at) values (?, ?, 'member', ?) on conflict(circle_id, user_id) do nothing",
+        [circleId, user.id, new Date().toISOString()],
+      );
+      return { status: "added" as const, userId: user.id };
+    },
+    async accessibleUserIds(userId: string): Promise<string[]> {
+      const rows = await db.all<{ user_id: string }>(
+        `select distinct peers.user_id
+         from shared_circle_members mine
+         join shared_circle_members peers on peers.circle_id = mine.circle_id
+         where mine.user_id = ?`,
+        [userId],
+      );
+      return [...new Set([userId, ...rows.map((row) => row.user_id)])];
+    },
+  };
+
   const refreshes = {
     async insert(entry: {
       userId: string;
@@ -330,7 +423,7 @@ export function createRepositories(db: SqlClient = getDb()) {
     },
   };
 
-  return { db, users, sessions, places, visits, foodItems, refreshes };
+  return { db, users, sessions, places, cuisines, visits, foodItems, refreshes, circles };
 }
 
 export type Repositories = ReturnType<typeof createRepositories>;

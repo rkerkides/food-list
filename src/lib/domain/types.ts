@@ -107,6 +107,8 @@ export interface Place {
   publicRating: number | null;
   publicRatingCount: number | null;
   priceLevel: number | null;
+  /** A user-supplied Google Maps place URL, preferred over the generated search link. */
+  googleMapsUrl: string | null;
   website: string | null;
   phone: string | null;
   openingHours: OpeningHours | null;
@@ -288,6 +290,10 @@ export interface ScoreResult {
 
 export interface DecideQuery {
   area?: string | null;
+  /** A browser/device or address-derived point used for distance ranking. */
+  originLatitude?: number | null;
+  originLongitude?: number | null;
+  originLabel?: string | null;
   city?: string | null;
   maxDistanceKm?: number | null;
   cuisines?: string[];

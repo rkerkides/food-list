@@ -25,6 +25,7 @@ import { ImageIcon, Loader2, Pencil, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { updatePlaceAction } from "@/app/actions/places";
+import { CuisinePicker } from "./cuisine-picker";
 
 export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
   const router = useRouter();
@@ -40,6 +41,7 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
   );
   const [upload, setUpload] = React.useState<File | null>(null);
   const [uploadInputKey, setUploadInputKey] = React.useState(0);
+  const [cuisines, setCuisines] = React.useState(place.cuisines);
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -49,6 +51,7 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
     setStockImage(originalStockImage ?? automaticStockImage);
     setUpload(null);
     setUploadInputKey((key) => key + 1);
+    setCuisines(place.cuisines);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -70,9 +73,10 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
         city: valueOrNull(form.get("city")),
         area: valueOrNull(form.get("area")),
         address: valueOrNull(form.get("address")),
+        googleMapsUrl: valueOrNull(form.get("googleMapsUrl")),
         website: valueOrNull(form.get("website")),
         phone: valueOrNull(form.get("phone")),
-        cuisines: splitList(form.get("cuisines")),
+        cuisines,
         tags: splitList(form.get("tags")),
         expectedSpendMin: numberOrNull(form.get("expectedSpendMin")),
         expectedSpendMax: numberOrNull(form.get("expectedSpendMax")),
@@ -177,8 +181,8 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
               </Field>
             </div>
 
-            <Field label="Cuisines" hint="Comma separated">
-              <Input name="cuisines" defaultValue={place.cuisines.join(", ")} />
+            <Field label="Cuisines" hint="Choose from your shared cuisine catalogue.">
+              <CuisinePicker value={cuisines} onChange={setCuisines} disabled={pending} />
             </Field>
 
             <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
@@ -280,6 +284,19 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
 
             <Field label="Address">
               <Input name="address" defaultValue={place.address ?? ""} />
+            </Field>
+
+            <Field
+              label="Google Maps link"
+              hint="Paste a Google Maps place link. It takes priority over the generated map search."
+            >
+              <Input
+                name="googleMapsUrl"
+                type="url"
+                inputMode="url"
+                placeholder="https://www.google.com/maps/place/..."
+                defaultValue={place.googleMapsUrl ?? ""}
+              />
             </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">

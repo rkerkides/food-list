@@ -133,6 +133,33 @@ describe("place management", () => {
     expect(refreshed.preserved).toContain("name");
   });
 
+  it("keeps manually completed public facts and map coordinates on refresh", async () => {
+    const { repos, userId } = await createTestContext();
+    const created = await addPlaceFromProvider(userId, { result: providerResult }, repos);
+    if (created.status !== "created") throw new Error("expected creation");
+
+    await updatePlace(
+      userId,
+      created.place.id,
+      {
+        publicRating: 4.8,
+        publicRatingCount: 999,
+        latitude: 35.17,
+        longitude: 33.36,
+      },
+      repos,
+    );
+
+    const refreshed = await refreshPlace(userId, created.place.id, repos);
+    expect(refreshed.place!.publicRating).toBe(4.8);
+    expect(refreshed.place!.publicRatingCount).toBe(999);
+    expect(refreshed.place!.latitude).toBe(35.17);
+    expect(refreshed.place!.longitude).toBe(33.36);
+    expect(refreshed.preserved).toEqual(
+      expect.arrayContaining(["publicRating", "publicRatingCount", "latitude", "longitude"]),
+    );
+  });
+
   it("records a refresh log entry", async () => {
     const { repos, userId } = await createTestContext();
     const created = await addPlaceFromProvider(userId, { result: providerResult }, repos);

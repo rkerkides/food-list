@@ -19,6 +19,7 @@ import {
   setPlaceStatus,
   updatePlace,
 } from "@/lib/services/places";
+import { validateCuisines } from "@/lib/services/cuisines";
 
 export type AddPlaceResult =
   | { ok: true; placeId: string }
@@ -35,6 +36,13 @@ export async function addPlaceAction(input: AddPlaceInput): Promise<AddPlaceResu
   if (!parsed.success) {
     return { ok: false, error: "Those details were not valid.", code: "validation" };
   }
+
+  const cuisineCheck = await validateCuisines(
+    user.id,
+    parsed.data.cuisines ?? parsed.data.result.cuisines,
+  );
+  if (!cuisineCheck.ok) return { ok: false, error: cuisineCheck.error, code: "validation" };
+  parsed.data.cuisines = cuisineCheck.cuisines;
 
   try {
     const outcome = await addPlaceFromProvider(user.id, parsed.data);
@@ -72,6 +80,10 @@ export async function createManualPlaceAction(input: ManualPlaceInput): Promise<
     return { ok: false, error: "Those details were not valid.", code: "validation" };
   }
 
+  const cuisineCheck = await validateCuisines(user.id, parsed.data.cuisines ?? []);
+  if (!cuisineCheck.ok) return { ok: false, error: cuisineCheck.error, code: "validation" };
+  parsed.data.cuisines = cuisineCheck.cuisines;
+
   const outcome = await createManualPlace(user.id, parsed.data);
   if (outcome.status === "created") {
     revalidatePath("/");
@@ -104,12 +116,19 @@ export async function updatePlaceAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Those details were not valid." };
   }
 
+  if (parsed.data.cuisines !== undefined) {
+    const cuisineCheck = await validateCuisines(user.id, parsed.data.cuisines);
+    if (!cuisineCheck.ok) return { ok: false, error: cuisineCheck.error };
+    parsed.data.cuisines = cuisineCheck.cuisines;
+  }
+
   const updated = await updatePlace(user.id, placeId, parsed.data);
   if (!updated) return { ok: false, error: "That place is not in your list." };
 
   revalidatePath("/");
   revalidatePath("/places");
   revalidatePath(`/places/${placeId}`);
+  revalidatePath("/profile/data-status");
   return { ok: true };
 }
 
@@ -122,6 +141,7 @@ export async function setPlaceStatusAction(
   revalidatePath("/");
   revalidatePath("/places");
   revalidatePath(`/places/${placeId}`);
+  revalidatePath("/profile/data-status");
   return { ok: true };
 }
 

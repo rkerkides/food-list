@@ -64,6 +64,7 @@ export async function POST(
     revalidatePath("/");
     revalidatePath("/places");
     revalidatePath(`/places/${placeId}`);
+    revalidatePath("/profile/data-status");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("place image update failed", error);

@@ -8,6 +8,7 @@ import {
   type PlaceWithStats,
   type VisitWithItems,
 } from "@/lib/domain/types";
+import { isImportedHistory } from "@/lib/domain/visit-history";
 import { formatDate, formatEur, formatRating, relativeTime } from "@/lib/utils/format";
 import { CalendarDays, ChefHat, Repeat, Sparkles, Star, Utensils } from "lucide-react";
 import Link from "next/link";
@@ -50,7 +51,11 @@ export function HighlightsGrid({
                 <p className="truncate font-medium">{item.name}</p>
                 <p className="text-xs text-ink-muted">
                   {item.category ? `${item.category} · ` : ""}
-                  {visit ? relativeTime(visit.visitedAt) : relativeTime(item.createdAt)}
+                  {visit && isImportedHistory(visit)
+                    ? "From previous list"
+                    : visit
+                      ? relativeTime(visit.visitedAt)
+                      : relativeTime(item.createdAt)}
                 </p>
               </div>
               {item.isHighlight ? (
@@ -187,7 +192,10 @@ export function VisitTimeline({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <p className="font-medium">{formatDate(visit.visitedAt)}</p>
+                <p className="font-medium">
+                  {isImportedHistory(visit) ? "Previously visited" : formatDate(visit.visitedAt)}
+                </p>
+                {isImportedHistory(visit) ? <Badge size="sm">Date not recorded</Badge> : null}
                 {visit.occasion ? (
                   <Badge size="sm">{OCCASION_LABELS[visit.occasion]}</Badge>
                 ) : null}

@@ -316,7 +316,7 @@ function buildReasons({
   const personalRating = place.stats.personalRating;
 
   if (distanceKm !== null) {
-    const origin = query.area ?? place.area ?? place.city ?? "you";
+    const origin = query.originLabel ?? query.area ?? place.area ?? place.city ?? "you";
     reasons.push({
       label: `${formatDistanceKm(distanceKm)} from ${origin}`,
       sentiment: distanceScore >= 0.7 ? "positive" : "neutral",

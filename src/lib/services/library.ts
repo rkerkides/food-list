@@ -2,6 +2,8 @@ import { ensureMigrations, getDb } from "@/lib/db";
 import { createRepositories, type Repositories } from "@/lib/data/repositories";
 import { buildUserPreferences } from "@/lib/domain/preferences";
 import { preparePlaces, type PreparedPlace } from "@/lib/domain/place-view";
+import { isImportedHistory } from "@/lib/domain/visit-history";
+import type { Coordinates } from "@/lib/domain/geo";
 import type {
   FoodItem,
   Place,
@@ -28,9 +30,12 @@ export interface UserLibrary {
 
 export interface LoadLibraryOptions {
   originArea?: string | null;
+  originCoordinates?: Coordinates | null;
   now?: Date;
   timeZone?: string;
   repos?: Repositories;
+  /** Include libraries explicitly shared through a circle (on by default). */
+  includeShared?: boolean;
 }
 
 export async function loadUserLibrary(
@@ -38,11 +43,19 @@ export async function loadUserLibrary(
   options: LoadLibraryOptions = {},
 ): Promise<UserLibrary> {
   const repos = options.repos ?? (await defaultRepositories());
-  const [places, visits, items] = await Promise.all([
-    repos.places.listByUser(userId),
-    repos.visits.listByUser(userId),
-    repos.foodItems.listByUser(userId),
-  ]);
+  const userIds = options.includeShared === false ? [userId] : await repos.circles.accessibleUserIds(userId);
+  const libraries = await Promise.all(
+    userIds.map(async (ownerId) =>
+      Promise.all([
+        repos.places.listByUser(ownerId),
+        repos.visits.listByUser(ownerId),
+        repos.foodItems.listByUser(ownerId),
+      ]),
+    ),
+  );
+  const places = libraries.flatMap(([ownerPlaces]) => ownerPlaces);
+  const visits = libraries.flatMap(([, ownerVisits]) => ownerVisits);
+  const items = libraries.flatMap(([, , ownerItems]) => ownerItems);
 
   return buildLibrary(places, visits, items, options);
 }
@@ -59,7 +72,12 @@ export function buildLibrary(
     placesWithStats,
     { visits, items },
     preferences,
-    { originArea: options.originArea ?? null, now: options.now, timeZone: options.timeZone },
+    {
+      originArea: options.originArea ?? null,
+      originCoordinates: options.originCoordinates ?? null,
+      now: options.now,
+      timeZone: options.timeZone,
+    },
   );
   return { places: placesWithStats, visits, items, preferences, prepared };
 }
@@ -73,6 +91,9 @@ export function computePlaceStats(
     .filter((visit) => visit.placeId === placeId)
     .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt));
   const placeItems = items.filter((item) => item.placeId === placeId);
+  // An imported visit still establishes the important fact that the venue has
+  // been tried, but must not pretend that its placeholder date is meaningful.
+  const datedVisits = placeVisits.filter((visit) => !isImportedHistory(visit));
 
   const ratings = placeVisits
     .map((visit) => visit.rating)
@@ -87,8 +108,8 @@ export function computePlaceStats(
 
   return {
     visitCount: placeVisits.length,
-    lastVisitedAt: placeVisits[0]?.visitedAt ?? null,
-    firstVisitedAt: placeVisits[placeVisits.length - 1]?.visitedAt ?? null,
+    lastVisitedAt: datedVisits[0]?.visitedAt ?? null,
+    firstVisitedAt: datedVisits[datedVisits.length - 1]?.visitedAt ?? null,
     personalRating:
       ratings.length > 0 ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null,
     observedSpendMedian: spends.length > 0 ? median(spends) : null,

@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { addPlaceAction, createManualPlaceAction } from "@/app/actions/places";
 import { PlaceVisual } from "./place-visual";
+import { CuisinePicker } from "./cuisine-picker";
 
 type SearchResult = PlaceSearchResult & { alreadySaved: boolean; savedPlaceId: string | null };
 
@@ -55,6 +56,8 @@ export function AddPlaceDialog({
   const [duplicate, setDuplicate] = React.useState<DuplicateWarning | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [detailsCuisines, setDetailsCuisines] = React.useState<string[]>([]);
+  const [manualCuisines, setManualCuisines] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
@@ -66,6 +69,8 @@ export function AddPlaceDialog({
     setSubmitError(null);
     setSearchError(null);
     setProviderNote(null);
+    setDetailsCuisines([]);
+    setManualCuisines([]);
   }, []);
 
   React.useEffect(() => {
@@ -131,6 +136,7 @@ export function AddPlaceDialog({
       return;
     }
     setSelected(result);
+    setDetailsCuisines(result.cuisines);
     setDuplicate(null);
     setStep("details");
   }
@@ -153,7 +159,7 @@ export function AddPlaceDialog({
       city: readString(form.get("city")),
       area: readString(form.get("area")),
       address: readString(form.get("address")),
-      cuisines: readList(form.get("cuisines")),
+      cuisines: detailsCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
       expectedSpendMax: readNumber(form.get("expectedSpendMax")),
@@ -188,7 +194,7 @@ export function AddPlaceDialog({
       city: (readString(form.get("city")) as never) ?? null,
       area: readString(form.get("area")),
       address: readString(form.get("address")),
-      cuisines: readList(form.get("cuisines")),
+      cuisines: manualCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
       expectedSpendMax: readNumber(form.get("expectedSpendMax")),
@@ -376,6 +382,7 @@ export function AddPlaceDialog({
                 onClick={() => {
                   setStep("manual");
                   setDuplicate(null);
+                  setManualCuisines([]);
                 }}
               >
                 Can’t find it? Add the place manually
@@ -448,11 +455,8 @@ export function AddPlaceDialog({
                   </Field>
                 </div>
 
-                <Field
-                  label="Cuisines"
-                  hint="Comma separated — one of the strongest signals for taste matching."
-                >
-                  <Input name="cuisines" defaultValue={selected.cuisines.join(", ")} />
+                <Field label="Cuisines" hint="One of the strongest signals for taste matching.">
+                  <CuisinePicker value={detailsCuisines} onChange={setDetailsCuisines} disabled={submitting} />
                 </Field>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -566,8 +570,8 @@ export function AddPlaceDialog({
                 <Field label="Address">
                   <Input name="address" placeholder="Street, number" />
                 </Field>
-                <Field label="Cuisines" hint="Comma separated — used for taste matching.">
-                  <Input name="cuisines" placeholder="Cypriot, Grill" />
+                <Field label="Cuisines" hint="Use the shared catalogue for consistent taste matching.">
+                  <CuisinePicker value={manualCuisines} onChange={setManualCuisines} disabled={submitting} />
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Expected spend from" hint="€ per person — for budget matching">

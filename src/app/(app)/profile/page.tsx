@@ -4,23 +4,29 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Alert } from "@/components/ui/alert";
 import { AuthenticatedOnly, SignOutButton, DemoResetButton } from "@/components/app/profile-controls";
+import { SharedCircles } from "@/components/app/shared-circles";
+import { CuisineCatalogManager } from "@/components/app/cuisine-catalog-manager";
 import { Stars } from "@/components/app/rating";
 import { requireUser } from "@/lib/auth/session";
 import { loadTasteInsights } from "@/lib/services/insights";
 import { loadUserLibrary } from "@/lib/services/library";
+import { listSharedCircles } from "@/lib/services/circles";
+import { listCuisineCatalog } from "@/lib/services/cuisines";
 import { describeProvider, resolveProviderId } from "@/lib/places";
 import { formatBudgetRange, formatRating, titleCase } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { Compass, Sparkles, UtensilsCrossed } from "lucide-react";
+import { Compass, ListChecks, Sparkles, UtensilsCrossed } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [insights, library] = await Promise.all([
+  const [insights, library, circles, cuisineCatalog] = await Promise.all([
     loadTasteInsights(user.id),
     loadUserLibrary(user.id),
+    listSharedCircles(user.id),
+    listCuisineCatalog(user.id),
   ]);
   const provider = describeProvider();
   const providerId = resolveProviderId();
@@ -147,6 +153,20 @@ export default async function ProfilePage() {
         </div>
       ) : null}
 
+      <SharedCircles circles={circles} currentUserId={user.id} />
+
+      <Card className="space-y-4 p-5">
+        <div>
+          <h2 className="text-sm font-semibold tracking-wide text-ink-soft uppercase">Cuisine catalogue</h2>
+          <p className="mt-1 text-sm text-ink-muted">Controlled labels keep filters and taste insights consistent.</p>
+        </div>
+        <CuisineCatalogManager
+          initial={cuisineCatalog
+            .filter((entry) => entry.source === "custom")
+            .map((entry) => ({ id: entry.id, name: entry.name }))}
+        />
+      </Card>
+
       <Card className="space-y-4 p-5">
         <h2 className="text-sm font-semibold tracking-wide text-ink-soft uppercase">Account</h2>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -182,6 +202,12 @@ export default async function ProfilePage() {
         </dl>
 
         <div className="flex flex-wrap gap-2 border-t border-line pt-4">
+          <Button asChild variant="outline">
+            <Link href="/profile/data-status">
+              <ListChecks className="size-4" />
+              Data status
+            </Link>
+          </Button>
           <SignOutButton />
           <DemoResetButton isDemo={user.isDemo} />
           <AuthenticatedOnly />

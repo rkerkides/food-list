@@ -135,21 +135,28 @@ export function LogVisitDialog({
         })),
     };
 
-    const result = visit
-      ? await updateVisitAction(visit.id, payload)
-      : await logVisitAction(payload);
+    try {
+      const result = visit
+        ? await updateVisitAction(visit.id, payload)
+        : await logVisitAction(payload);
 
-    setSaving(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    setOpen(false);
-    router.refresh();
-    if (!visit) {
-      setItems([emptyItem()]);
-      setThoughts("");
-      setRating(null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+      if (!visit) {
+        setItems([emptyItem()]);
+        setThoughts("");
+        setRating(null);
+      }
+    } catch {
+      setError(
+        "This page was updated while the visit form was open. Your details are still here — reload the page, then submit again.",
+      );
+    } finally {
+      setSaving(false);
     }
   }
 

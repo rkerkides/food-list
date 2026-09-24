@@ -25,7 +25,11 @@ export default async function DecidePage({
   const params = parseDecideParams(raw);
 
   const hasCriteria = Object.entries(raw).some(([, value]) => Boolean(value));
-  const library = await loadUserLibrary(user.id, { originArea: params.area });
+  const originCoordinates =
+    params.originLatitude != null && params.originLongitude != null
+      ? { latitude: params.originLatitude, longitude: params.originLongitude }
+      : null;
+  const library = await loadUserLibrary(user.id, { originArea: params.area, originCoordinates });
   const options = deriveFilterOptions(library.prepared);
 
   const occasion = VISIT_OCCASIONS.includes(params.occasion as VisitOccasion)
@@ -36,6 +40,9 @@ export default async function DecidePage({
     user.id,
     {
       area: params.area,
+      originLatitude: params.originLatitude,
+      originLongitude: params.originLongitude,
+      originLabel: params.originLabel,
       maxDistanceKm: params.maxDistanceKm,
       cuisines: params.cuisines,
       foodQuery: params.foodQuery,
@@ -56,6 +63,9 @@ export default async function DecidePage({
 
   const formState: DecideFormState = {
     area: params.area ?? "",
+    originLatitude: params.originLatitude,
+    originLongitude: params.originLongitude,
+    originLabel: params.originLabel ?? "",
     maxDistanceKm: params.maxDistanceKm ?? 60,
     cuisines: params.cuisines,
     foodQuery: params.foodQuery ?? "",

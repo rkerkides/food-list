@@ -47,6 +47,7 @@ export default async function PlaceDetailPage({
   if (!data) notFound();
 
   const { place, visits, items, budget, isOpenNow, preferenceAverage } = data;
+  const isOwner = place.userId === user.id;
   const visited = visits.length > 0;
   const todayIndex = localDayAndMinutes(new Date(), "Asia/Nicosia").day;
   const lastSpend =
@@ -143,18 +144,24 @@ export default async function PlaceDetailPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <LogVisitDialog
-                placeId={place.id}
-                placeName={place.name}
-                lastSpend={lastSpend}
-                trigger={
-                  <Button size="lg">
-                    <CalendarCheck className="size-4" />
-                    {visited ? "Log another visit" : "Log first visit"}
-                  </Button>
-                }
-              />
-              <EditPlaceDialog place={place} />
+              {isOwner ? (
+                <>
+                  <LogVisitDialog
+                    placeId={place.id}
+                    placeName={place.name}
+                    lastSpend={lastSpend}
+                    trigger={
+                      <Button size="lg">
+                        <CalendarCheck className="size-4" />
+                        {visited ? "Log another visit" : "Log first visit"}
+                      </Button>
+                    }
+                  />
+                  <EditPlaceDialog place={place} />
+                </>
+              ) : (
+                <Badge variant="outline">Shared by another circle member · read-only</Badge>
+              )}
               <Button asChild variant="outline">
                 <a href={mapLink} target="_blank" rel="noreferrer">
                   <MapPin className="size-4" />
@@ -183,7 +190,9 @@ export default async function PlaceDetailPage({
               <span className="hidden h-4 w-px bg-line sm:block" />
               <span className="text-ink-soft">
                 {visited
-                  ? `${place.stats.visitCount} ${place.stats.visitCount === 1 ? "visit" : "visits"} · last ${relativeTime(place.stats.lastVisitedAt)}`
+                  ? place.stats.lastVisitedAt
+                    ? `${place.stats.visitCount} ${place.stats.visitCount === 1 ? "visit" : "visits"} · last ${relativeTime(place.stats.lastVisitedAt)}`
+                    : `${place.stats.visitCount} ${place.stats.visitCount === 1 ? "visit" : "visits"} · previously visited (date not recorded)`
                   : "Never visited"}
               </span>
               {place.stats.foodItemCount > 0 ? (
@@ -211,6 +220,7 @@ export default async function PlaceDetailPage({
             hasVisited={visited}
             hasDishes={items.length > 0}
             lastSpend={lastSpend}
+            canEdit={isOwner}
           />
 
           <section className="space-y-3">
@@ -486,6 +496,7 @@ export default async function PlaceDetailPage({
               height="h-56"
               initialSelectedId={place.id}
               selectedAction="google"
+              locationControlInitiallyCollapsed
             />
           ) : (
             <Card className="p-5">
@@ -500,7 +511,7 @@ export default async function PlaceDetailPage({
             <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">
               Manage
             </p>
-            <PlaceActions place={place} />
+            {isOwner ? <PlaceActions place={place} /> : null}
             <p className="text-xs text-ink-muted">
               Source:{" "}
               {place.provider === "google"
@@ -546,11 +557,13 @@ function RecommendationDataPrompt({
   hasVisited,
   hasDishes,
   lastSpend,
+  canEdit,
 }: {
   place: PlaceWithStats;
   hasVisited: boolean;
   hasDishes: boolean;
   lastSpend: number | null;
+  canEdit: boolean;
 }) {
   const missingVenueSignals = [
     place.cuisines.length === 0 ? "cuisine" : null,
@@ -586,7 +599,7 @@ function RecommendationDataPrompt({
             ) : null}
             {hasVisited && !hasDishes ? <li>• Add a rated dish to remember what worked.</li> : null}
           </ul>
-          <div className="flex flex-wrap gap-2 pt-1">
+          {canEdit ? <div className="flex flex-wrap gap-2 pt-1">
             {missingVenueSignals.length > 0 ? <EditPlaceDialog place={place} /> : null}
             {!hasVisited ? (
               <LogVisitDialog
@@ -596,7 +609,7 @@ function RecommendationDataPrompt({
                 trigger={<Button size="sm">Log first visit</Button>}
               />
             ) : null}
-          </div>
+          </div> : null}
         </div>
       </div>
     </Card>

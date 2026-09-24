@@ -30,6 +30,15 @@ export interface SessionRow {
   user_agent: string | null;
 }
 
+export interface CuisineCatalogRow {
+  id: string;
+  user_id: string;
+  name: string;
+  normalized_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PlaceRow {
   id: string;
   user_id: string;
@@ -47,6 +56,7 @@ export interface PlaceRow {
   public_rating: number | null;
   public_rating_count: number | null;
   price_level: number | null;
+  google_maps_url: string | null;
   website: string | null;
   phone: string | null;
   opening_hours: string | null;
@@ -129,6 +139,7 @@ export const PLACE_FIELD_MAP: Record<keyof Place, string> = {
   publicRating: "public_rating",
   publicRatingCount: "public_rating_count",
   priceLevel: "price_level",
+  googleMapsUrl: "google_maps_url",
   website: "website",
   phone: "phone",
   openingHours: "opening_hours",
@@ -206,6 +217,7 @@ export function toPlace(row: PlaceRow): Place {
     publicRating: numberOrNull(row.public_rating),
     publicRatingCount: row.public_rating_count ?? null,
     priceLevel: numberOrNull(row.price_level),
+    googleMapsUrl: row.google_maps_url,
     website: row.website,
     phone: row.phone,
     openingHours: decodeJson<OpeningHours | null>(row.opening_hours, null),

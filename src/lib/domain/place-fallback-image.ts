@@ -2,6 +2,8 @@ import type { PlaceCategory } from "./types";
 
 export type PlaceFallbackImage =
   | "burger"
+  | "sandwich"
+  | "barbecue"
   | "italian"
   | "greek"
   | "gyros"
@@ -20,6 +22,8 @@ export const PLACE_STOCK_IMAGES: readonly {
   src: string;
 }[] = [
   { key: "burger", label: "Burgers", src: "/images/place-fallbacks/burger.webp" },
+  { key: "sandwich", label: "Sandwiches", src: "/images/place-fallbacks/sandwich-v1.png" },
+  { key: "barbecue", label: "Barbecue", src: "/images/place-fallbacks/barbecue-v1.png" },
   { key: "italian", label: "Italian", src: "/images/place-fallbacks/italian.webp" },
   { key: "greek", label: "Greek", src: "/images/place-fallbacks/greek.webp" },
   { key: "gyros", label: "Gyros", src: "/images/place-fallbacks/gyros.webp" },
@@ -53,8 +57,16 @@ export function placeStockImageFromRef(ref: string | null | undefined): PlaceFal
 
 const CUISINE_RULES: { image: PlaceFallbackImage; terms: string[] }[] = [
   {
+    image: "barbecue",
+    terms: ["barbecue", "bbq", "smokehouse", "smoked meat", "american barbecue"],
+  },
+  {
     image: "burger",
     terms: ["burger", "hamburger", "cheeseburger", "smashburger", "fast food"],
+  },
+  {
+    image: "sandwich",
+    terms: ["sandwich", "steak sandwich", "deli sandwich"],
   },
   {
     image: "gyros",

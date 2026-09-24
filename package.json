@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:import-starter-list": "tsx scripts/import-starter-list.ts",
     "places:sync": "tsx scripts/sync-osm.ts",
     "db:reset": "tsx scripts/reset.ts",
     "db:sql": "tsx scripts/emit-sql.ts",

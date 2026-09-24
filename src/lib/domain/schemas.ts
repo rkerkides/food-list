@@ -33,6 +33,11 @@ const optionalNumber = (min?: number, max?: number) =>
     .nullable()
     .optional();
 
+const optionalInteger = (min?: number, max?: number) =>
+  optionalNumber(min, max).refine((value) => value === null || Number.isInteger(value), {
+    message: "Must be a whole number",
+  });
+
 export const placeSearchResultSchema = z.object({
   provider: z.enum(["osm", "demo", "google", "manual"]),
   providerPlaceId: z.string().min(1),
@@ -103,6 +108,11 @@ export const updatePlaceSchema = z.object({
   city: z.string().nullable().optional(),
   area: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
+  latitude: optionalNumber(-90, 90),
+  longitude: optionalNumber(-180, 180),
+  publicRating: optionalNumber(0, 5),
+  publicRatingCount: optionalInteger(0, 10_000_000),
+  googleMapsUrl: z.string().url("Paste a valid Google Maps URL").nullable().optional(),
   website: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   expectedSpendMin: optionalNumber(0, 2000),
@@ -137,6 +147,9 @@ export const visitSchema = z.object({
 
 export const decideSchema = z.object({
   area: z.string().nullable().optional(),
+  originLatitude: optionalNumber(-90, 90),
+  originLongitude: optionalNumber(-180, 180),
+  originLabel: optionalString,
   city: z.string().nullable().optional(),
   maxDistanceKm: z.number().min(0.5).max(200).nullable().optional(),
   cuisines: z.array(z.string()).optional(),

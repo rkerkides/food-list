@@ -44,6 +44,7 @@ export function makePlace(
     publicRating: 4.5,
     publicRatingCount: 250,
     priceLevel: 2,
+    googleMapsUrl: null,
     website: null,
     phone: null,
     openingHours: alwaysOpen(),

@@ -332,4 +332,94 @@ create index if not exists place_image_uploads_user_idx on place_image_uploads(u
 `,
 };
 
-export const MIGRATIONS: Migration[] = [init, osmCatalog, placeImageUploads];
+const sharedCircles: Migration = {
+  id: "0004",
+  name: "shared_circles",
+  sqlite: `
+create table if not exists shared_circles (
+  id text primary key,
+  owner_user_id text not null references users(id) on delete cascade,
+  name text not null,
+  created_at text not null
+);
+create index if not exists shared_circles_owner_idx on shared_circles(owner_user_id);
+
+create table if not exists shared_circle_members (
+  circle_id text not null references shared_circles(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  role text not null default 'member',
+  joined_at text not null,
+  primary key(circle_id, user_id)
+);
+create index if not exists shared_circle_members_user_idx on shared_circle_members(user_id);
+`,
+  postgres: `
+create table if not exists shared_circles (
+  id text primary key,
+  owner_user_id text not null references users(id) on delete cascade,
+  name text not null,
+  created_at text not null
+);
+create index if not exists shared_circles_owner_idx on shared_circles(owner_user_id);
+
+create table if not exists shared_circle_members (
+  circle_id text not null references shared_circles(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  role text not null default 'member',
+  joined_at text not null,
+  primary key(circle_id, user_id)
+);
+create index if not exists shared_circle_members_user_idx on shared_circle_members(user_id);
+`,
+};
+
+const placeGoogleMapsUrl: Migration = {
+  id: "0005",
+  name: "place_google_maps_url",
+  sqlite: `
+alter table places add column google_maps_url text;
+`,
+  postgres: `
+alter table places add column if not exists google_maps_url text;
+`,
+};
+
+const cuisineCatalog: Migration = {
+  id: "0006",
+  name: "cuisine_catalog",
+  sqlite: `
+create table if not exists cuisine_catalog (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  name text not null,
+  normalized_name text not null,
+  created_at text not null,
+  updated_at text not null
+);
+create unique index if not exists cuisine_catalog_user_name_unique
+  on cuisine_catalog(user_id, normalized_name);
+create index if not exists cuisine_catalog_user_idx on cuisine_catalog(user_id, name);
+`,
+  postgres: `
+create table if not exists cuisine_catalog (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  name text not null,
+  normalized_name text not null,
+  created_at text not null,
+  updated_at text not null
+);
+create unique index if not exists cuisine_catalog_user_name_unique
+  on cuisine_catalog(user_id, normalized_name);
+create index if not exists cuisine_catalog_user_idx on cuisine_catalog(user_id, name);
+`,
+};
+
+export const MIGRATIONS: Migration[] = [
+  init,
+  osmCatalog,
+  placeImageUploads,
+  sharedCircles,
+  placeGoogleMapsUrl,
+  cuisineCatalog,
+];

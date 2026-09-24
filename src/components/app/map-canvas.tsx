@@ -7,7 +7,16 @@ import { distanceKm, resolveAreaCoordinates } from "@/lib/domain/geo";
 import { CATEGORY_LABELS, type PlaceCategory } from "@/lib/domain/types";
 import { cn } from "@/lib/utils/cn";
 import type * as Leaflet from "leaflet";
-import { Crosshair, ExternalLink, LocateFixed, MapPinned, Search, Star, X } from "lucide-react";
+import {
+  ChevronDown,
+  Crosshair,
+  ExternalLink,
+  LocateFixed,
+  MapPinned,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -46,12 +55,15 @@ export function MapCanvas({
   height = "h-[420px] sm:h-[560px]",
   initialSelectedId,
   selectedAction = "place",
+  locationControlInitiallyCollapsed = false,
 }: {
   points: MapPoint[];
   className?: string;
   height?: string;
   initialSelectedId?: string;
   selectedAction?: "place" | "google";
+  /** Small embedded maps should keep controls out of the way until requested. */
+  locationControlInitiallyCollapsed?: boolean;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<Leaflet.Map | null>(null);
@@ -68,6 +80,9 @@ export function MapCanvas({
   const [deviceLocating, setDeviceLocating] = React.useState(false);
   const [locationSearching, setLocationSearching] = React.useState(false);
   const [locationError, setLocationError] = React.useState<string | null>(null);
+  const [locationControlOpen, setLocationControlOpen] = React.useState(
+    !locationControlInitiallyCollapsed,
+  );
   const selectedIdRef = React.useRef(selectedId);
   const selected = points.find((point) => point.id === selectedId) ?? null;
   const baseline = startingPoint ?? deviceLocation;
@@ -313,7 +328,7 @@ export function MapCanvas({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface-muted",
+        "relative isolate overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface-muted",
         className,
       )}
     >
@@ -331,65 +346,84 @@ export function MapCanvas({
       ) : null}
 
       <div className="pointer-events-none absolute left-3 top-3 z-[500] w-[min(19rem,calc(100%-1.5rem))]">
-        <div className="pointer-events-auto rounded-2xl border border-line bg-surface/95 p-3 shadow-[var(--shadow-float)] backdrop-blur">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-clay-50 text-clay-700">
-              <MapPinned className="size-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink">Starting point</p>
-              <p className="line-clamp-2 text-xs text-ink-muted">
-                {startingPoint
-                  ? `Using ${startingPoint.label}`
-                  : deviceLocation
-                    ? "Using your device location"
-                    : deviceLocating
-                      ? "Finding your device location…"
-                      : "Set a location to see distances"}
-              </p>
+        {locationControlOpen ? (
+          <div className="pointer-events-auto rounded-2xl border border-line bg-surface/95 p-3 shadow-[var(--shadow-float)] backdrop-blur">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-clay-50 text-clay-700">
+                <MapPinned className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">Starting point</p>
+                <p className="line-clamp-2 text-xs text-ink-muted">
+                  {startingPoint
+                    ? `Using ${startingPoint.label}`
+                    : deviceLocation
+                      ? "Using your device location"
+                      : deviceLocating
+                        ? "Finding your device location…"
+                        : "Set a location to see distances"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocationControlOpen(false)}
+                className="grid size-7 shrink-0 place-items-center rounded-full text-ink-muted transition hover:bg-surface-muted hover:text-ink"
+                aria-label="Collapse starting point controls"
+              >
+                <ChevronDown className="size-4" />
+              </button>
             </div>
-          </div>
 
-          <form onSubmit={setTypedStartingPoint} className="mt-3 flex gap-2">
-            <Input
-              value={locationQuery}
-              onChange={(event) => setLocationQuery(event.target.value)}
-              placeholder="Address, area, or 35.17, 33.36"
-              className="h-9 min-w-0 px-3 text-xs"
-              aria-label="Starting point"
-            />
-            <button
-              type="submit"
-              disabled={locationSearching || locationQuery.trim().length === 0}
-              className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-600 text-white transition hover:bg-clay-700 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Set starting point"
-            >
-              <Search className="size-4" />
-            </button>
-          </form>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={useDeviceAsStartingPoint}
-              disabled={deviceLocating}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-clay-700 hover:underline disabled:opacity-50"
-            >
-              <LocateFixed className="size-3.5" />
-              Use device location
-            </button>
-            {startingPoint ? (
+            <form onSubmit={setTypedStartingPoint} className="mt-3 flex gap-2">
+              <Input
+                value={locationQuery}
+                onChange={(event) => setLocationQuery(event.target.value)}
+                placeholder="Address, area, or 35.17, 33.36"
+                className="h-9 min-w-0 px-3 text-xs"
+                aria-label="Starting point"
+              />
+              <button
+                type="submit"
+                disabled={locationSearching || locationQuery.trim().length === 0}
+                className="grid size-9 shrink-0 place-items-center rounded-xl bg-clay-600 text-white transition hover:bg-clay-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Set starting point"
+              >
+                <Search className="size-4" />
+              </button>
+            </form>
+            <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={useDeviceAsStartingPoint}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:underline"
+                disabled={deviceLocating}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-clay-700 hover:underline disabled:opacity-50"
               >
-                <Crosshair className="size-3.5" />
-                Clear custom point
+                <LocateFixed className="size-3.5" />
+                Use device location
               </button>
-            ) : null}
+              {startingPoint ? (
+                <button
+                  type="button"
+                  onClick={useDeviceAsStartingPoint}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:underline"
+                >
+                  <Crosshair className="size-3.5" />
+                  Clear custom point
+                </button>
+              ) : null}
+            </div>
+            {locationError ? <p className="mt-2 text-xs text-red-700">{locationError}</p> : null}
           </div>
-          {locationError ? <p className="mt-2 text-xs text-red-700">{locationError}</p> : null}
-        </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLocationControlOpen(true)}
+            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-line bg-surface/95 px-3 py-2 text-xs font-semibold text-ink shadow-[var(--shadow-float)] backdrop-blur transition hover:bg-surface"
+          >
+            <MapPinned className="size-3.5 text-clay-700" />
+            Starting point
+          </button>
+        )}
       </div>
 
       {mapReady && points.length === 0 ? (

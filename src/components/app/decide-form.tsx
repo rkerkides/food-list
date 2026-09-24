@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { CATEGORY_PLURAL_LABELS, OCCASION_LABELS, VISIT_OCCASIONS } from "@/lib/domain/types";
 import type { PlaceCategory, VisitOccasion } from "@/lib/domain/types";
 import { cn } from "@/lib/utils/cn";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Crosshair, Loader2, MapPin, Sparkles, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -20,6 +20,9 @@ export interface DecideFormOptions {
 
 export interface DecideFormState {
   area: string;
+  originLatitude: number | null;
+  originLongitude: number | null;
+  originLabel: string;
   maxDistanceKm: number;
   cuisines: string[];
   foodQuery: string;
@@ -43,10 +46,20 @@ export function DecideForm({
   const router = useRouter();
   const [state, setState] = React.useState<DecideFormState>(initial);
   const [pending, setPending] = React.useState(false);
+  const [locationState, setLocationState] = React.useState<"idle" | "finding" | "ready" | "error">(
+    initial.originLatitude != null && initial.originLongitude != null ? "ready" : "idle",
+  );
+  const [locationMessage, setLocationMessage] = React.useState<string | null>(null);
+  const [address, setAddress] = React.useState("");
 
   const submit = (extra: Record<string, string> = {}) => {
     const params = new URLSearchParams(extra);
     if (state.area) params.set("area", state.area);
+    if (state.originLatitude != null && state.originLongitude != null) {
+      params.set("lat", String(state.originLatitude));
+      params.set("lng", String(state.originLongitude));
+      if (state.originLabel) params.set("origin", state.originLabel);
+    }
     if (state.maxDistanceKm < 60) params.set("maxDistance", String(state.maxDistanceKm));
     if (state.cuisines.length) params.set("cuisine", state.cuisines.join(","));
     if (state.foodQuery.trim()) params.set("food", state.foodQuery.trim());
@@ -67,6 +80,74 @@ export function DecideForm({
   const toggle = <T,>(list: T[], value: T): T[] =>
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
 
+  const useDeviceLocation = React.useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationState("error");
+      setLocationMessage("This browser cannot provide your location. Choose an area or enter an address instead.");
+      return;
+    }
+    setLocationState("finding");
+    setLocationMessage(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setState((current) => ({
+          ...current,
+          area: "",
+          originLatitude: position.coords.latitude,
+          originLongitude: position.coords.longitude,
+          originLabel: "Current location",
+        }));
+        setLocationState("ready");
+        setLocationMessage("Using your device location for distance and ranking.");
+      },
+      () => {
+        setLocationState("error");
+        setLocationMessage("Location was unavailable. Choose an area or enter an address instead.");
+      },
+      { enableHighAccuracy: false, maximumAge: 120_000, timeout: 8_000 },
+    );
+  }, []);
+
+  React.useEffect(() => {
+    if (initial.area || initial.originLatitude != null || initial.originLongitude != null) return;
+    useDeviceLocation();
+  }, [initial.area, initial.originLatitude, initial.originLongitude, useDeviceLocation]);
+
+  async function useAddress() {
+    const query = address.trim();
+    if (query.length < 2) {
+      setLocationState("error");
+      setLocationMessage("Enter an address or neighbourhood first.");
+      return;
+    }
+    setLocationState("finding");
+    setLocationMessage(null);
+    try {
+      const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+      const result = (await response.json().catch(() => null)) as {
+        latitude?: number;
+        longitude?: number;
+        label?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || result?.latitude == null || result.longitude == null) {
+        throw new Error(result?.error ?? "Could not find that address.");
+      }
+      setState((current) => ({
+        ...current,
+        area: "",
+        originLatitude: result.latitude as number,
+        originLongitude: result.longitude as number,
+        originLabel: result.label ?? query,
+      }));
+      setLocationState("ready");
+      setLocationMessage(`Using ${result.label ?? query} for distance and ranking.`);
+    } catch (error) {
+      setLocationState("error");
+      setLocationMessage(error instanceof Error ? error.message : "Could not find that address.");
+    }
+  }
+
   return (
     <form
       className="space-y-5"
@@ -76,10 +157,15 @@ export function DecideForm({
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Where are you?" hint="Distance is measured from this area">
+        <Field label="Where are you?" hint="Your device location is used by default; choose an override below.">
           <Select
             value={state.area}
-            onChange={(event) => setState({ ...state, area: event.target.value })}
+            onChange={(event) => {
+              const area = event.target.value;
+              setState({ ...state, area, originLatitude: null, originLongitude: null, originLabel: area });
+              setLocationMessage(area ? `Using ${area} as your location.` : null);
+              setLocationState(area ? "ready" : "idle");
+            }}
           >
             <option value="">Anywhere in Cyprus</option>
             {[...new Set([...options.cities, ...options.areas])].map((area) => (
@@ -88,6 +174,20 @@ export function DecideForm({
               </option>
             ))}
           </Select>
+          <div className="space-y-2 rounded-xl bg-surface-muted p-2.5">
+            <Button type="button" variant="subtle" size="sm" onClick={useDeviceLocation} disabled={locationState === "finding"}>
+              {locationState === "finding" ? <Loader2 className="size-3.5 animate-spin" /> : <Crosshair className="size-3.5" />}
+              Use my device location
+            </Button>
+            <div className="flex gap-2">
+              <Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Or enter an address" />
+              <Button type="button" variant="outline" size="sm" onClick={useAddress} disabled={locationState === "finding" || !address.trim()}>
+                <MapPin className="size-3.5" />
+                Use
+              </Button>
+            </div>
+            {locationMessage ? <p className={locationState === "error" ? "text-xs text-clay-800" : "text-xs text-olive-800"}>{locationMessage}</p> : null}
+          </div>
         </Field>
 
         <div className="space-y-2">
@@ -294,6 +394,9 @@ export function DecideForm({
           onClick={() => {
             setState({
               area: "",
+              originLatitude: null,
+              originLongitude: null,
+              originLabel: "",
               maxDistanceKm: 60,
               cuisines: [],
               foodQuery: "",
