@@ -3,29 +3,19 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
-
-interface InstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-}
+import {
+  clearInstallPrompt,
+  currentInstallPrompt,
+  subscribeToInstallPrompt,
+  type InstallPromptEvent,
+} from "./pwa-install-state";
 
 /** Shows an explicit install action when the browser has deemed the PWA installable. */
 export function PwaInstallButton() {
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(currentInstallPrompt);
 
   useEffect(() => {
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const onInstalled = () => setInstallPrompt(null);
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    return subscribeToInstallPrompt(setInstallPrompt);
   }, []);
 
   const prompt = installPrompt;
@@ -34,7 +24,7 @@ export function PwaInstallButton() {
   async function install(event: InstallPromptEvent) {
     await event.prompt();
     const choice = await event.userChoice;
-    if (choice.outcome === "accepted" || choice.outcome === "dismissed") setInstallPrompt(null);
+    if (choice.outcome === "accepted" || choice.outcome === "dismissed") clearInstallPrompt();
   }
 
   return (
