@@ -18,8 +18,11 @@ export const metadata: Metadata = {
     title: "Trapezi",
   },
   icons: {
-    icon: "/icons/trapezi-icon.svg",
-    apple: "/icons/trapezi-icon.svg",
+    icon: [
+      { url: "/icons/trapezi-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/trapezi-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/trapezi-icon-192.png",
   },
 };
 
@@ -28,6 +31,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

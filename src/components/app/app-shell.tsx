@@ -4,6 +4,7 @@ import { AddPlaceDialog } from "./add-place-dialog";
 import type { ProviderInfo } from "@/lib/places";
 import { DemoBadge } from "./demo-badge";
 import { SkipForward } from "lucide-react";
+import { PwaInstallButton } from "./pwa-install-button";
 
 export function AppShell({
   children,
@@ -36,6 +37,7 @@ export function AppShell({
           </div>
           <div className="ml-auto flex items-center gap-2">
             <DemoBadge provider={provider} />
+            <PwaInstallButton />
             <AddPlaceDialog provider={provider} />
           </div>
         </div>

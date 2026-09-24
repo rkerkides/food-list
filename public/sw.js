@@ -1,6 +1,11 @@
-const CACHE = "trapezi-shell-v1";
+const CACHE = "trapezi-shell-v2";
 const OFFLINE_URL = "/offline";
-const APP_SHELL = [OFFLINE_URL, "/manifest.webmanifest", "/icons/trapezi-icon.svg"];
+const APP_SHELL = [
+  OFFLINE_URL,
+  "/manifest.webmanifest",
+  "/icons/trapezi-icon-192.png",
+  "/icons/trapezi-icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
