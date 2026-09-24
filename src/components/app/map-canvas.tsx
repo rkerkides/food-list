@@ -52,10 +52,10 @@ interface MapLocation {
 export function MapCanvas({
   points,
   className,
-  height = "h-[420px] sm:h-[560px]",
+  height = "h-[clamp(19rem,52dvh,27rem)] sm:h-[560px]",
   initialSelectedId,
   selectedAction = "place",
-  locationControlInitiallyCollapsed = false,
+  locationControlInitiallyCollapsed = true,
 }: {
   points: MapPoint[];
   className?: string;
@@ -71,9 +71,8 @@ export function MapCanvas({
   const locationLayerRef = React.useRef<Leaflet.LayerGroup | null>(null);
   const markerRefs = React.useRef(new Map<string, Leaflet.Marker>());
   const [mapReady, setMapReady] = React.useState(false);
-  const [selectedId, setSelectedId] = React.useState<string | null>(
-    initialSelectedId ?? points[0]?.id ?? null,
-  );
+  // Index maps start unobstructed. Embedded detail maps explicitly select their place.
+  const [selectedId, setSelectedId] = React.useState<string | null>(initialSelectedId ?? null);
   const [deviceLocation, setDeviceLocation] = React.useState<MapLocation | null>(null);
   const [startingPoint, setStartingPoint] = React.useState<MapLocation | null>(null);
   const [locationQuery, setLocationQuery] = React.useState("");
@@ -349,7 +348,7 @@ export function MapCanvas({
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute left-3 top-3 z-[500] w-[min(19rem,calc(100%-1.5rem))]">
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-[500] sm:inset-x-auto sm:left-3 sm:w-80">
         {locationControlOpen ? (
           <div className="pointer-events-auto rounded-2xl border border-line bg-surface/95 p-3 shadow-[var(--shadow-float)] backdrop-blur">
             <div className="flex items-start gap-2">
@@ -439,8 +438,8 @@ export function MapCanvas({
       ) : null}
 
       {selected ? (
-        <div className="pointer-events-none absolute inset-x-3 bottom-7 z-[500] sm:inset-x-auto sm:left-4 sm:w-80">
-          <div className="pointer-events-auto rounded-2xl border border-line bg-surface/95 p-3.5 shadow-[var(--shadow-float)] backdrop-blur">
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[500] sm:inset-x-auto sm:bottom-7 sm:left-4 sm:w-80">
+          <div className="pointer-events-auto max-h-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl border border-line bg-surface/95 p-3 shadow-[var(--shadow-float)] backdrop-blur sm:p-3.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate font-display text-base font-semibold">{selected.name}</p>
@@ -459,7 +458,7 @@ export function MapCanvas({
                 <X className="size-3.5" />
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-soft sm:mt-2">
               {selected.personalRating != null ? (
                 <span className="inline-flex items-center gap-1 font-medium">
                   <Star className="size-3 fill-star text-star" />
@@ -483,7 +482,7 @@ export function MapCanvas({
                     : "Saved"}
               </Badge>
             </div>
-            <Button asChild size="sm" className="mt-3 w-full">
+            <Button asChild size="sm" className="mt-2.5 w-full sm:mt-3">
               {selectedAction === "google" ? (
                 <a
                   href={selected.googleMapsUrl ?? googleMapsCoordinateUrl(selected)}

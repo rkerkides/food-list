@@ -63,6 +63,7 @@
 
   body {
     min-width: 320px;
+    overflow-x: clip;
     background:
       radial-gradient(circle at 8% -10%, oklch(0.95 0.035 71 / 0.52), transparent 28rem),
       radial-gradient(circle at 94% 12%, oklch(0.94 0.025 122 / 0.38), transparent 26rem),
@@ -198,6 +199,8 @@
   .trapezi-leaflet-map .leaflet-control-attribution {
     color: var(--color-ink-muted);
     background: color-mix(in oklch, var(--color-surface) 90%, transparent);
+    max-width: calc(100vw - 2rem);
+    overflow-wrap: anywhere;
   }
 
   .trapezi-leaflet-map .leaflet-control-attribution a {
@@ -242,6 +245,18 @@
     box-shadow: var(--shadow-card);
     font-size: 0.75rem;
     font-weight: 600;
+  }
+
+  @media (max-width: 639px) {
+    .trapezi-leaflet-map .leaflet-control-zoom {
+      margin-right: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .trapezi-leaflet-map .leaflet-control-attribution {
+      font-size: 0.625rem;
+      line-height: 1.25;
+    }
   }
 }
 
