@@ -21,3 +21,6 @@ next-env.d.ts
 # misc
 .DS_Store
 *.tsbuildinfo
+
+# BMAD personal install answers
+/_bmad/config.user.toml
