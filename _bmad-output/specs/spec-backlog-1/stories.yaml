@@ -1,0 +1,64 @@
+- id: "1"
+  title: Test the shared-content permission gate
+  description: >-
+    Add tests for resolveEditablePlace and resolveEditableVisit covering every
+    access case in SPEC.md CAP-1; change production code only if a test exposes a real bug.
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-1."
+- id: "2"
+  title: Lock down the Google photo proxy
+  description: >-
+    Require a session and a genuine places/<id>/photos/<id> ref for Google photo
+    requests and make responses privately cacheable (SPEC.md CAP-2).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-2."
+- id: "3"
+  title: Keep the demo account out of circles
+  description: >-
+    Refuse circle creation and member additions by the demo user, and refuse adding
+    a demo account to any circle, with tests for both directions (SPEC.md CAP-3).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-3."
+- id: "4"
+  title: Fix image editing and uploaded photos on shared places
+  description: >-
+    Let allowed shared editors change a shared place's image and serve uploaded photos
+    to users who can access the owner's library, with tests (SPEC.md CAP-4).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-4."
+- id: "5"
+  title: Validate place status and spend range
+  description: >-
+    Reject unknown place statuses and minimum spend above maximum on every
+    spend-writing path, with tests (SPEC.md CAP-5).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-5."
+- id: "6"
+  title: Validate venue review input
+  description: >-
+    Schema-validate every venue review field with length limits and check cuisines
+    against the submission owner's catalogue, with tests (SPEC.md CAP-6).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-6."
+- id: "7"
+  title: Fix relative date wording
+  description: >-
+    Make one-day offsets read yesterday/tomorrow and start month wording at 30 days,
+    including recommendation reasons, with tests (SPEC.md CAP-7).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-7."
+- id: "8"
+  title: Plot only places with coordinates on the places map
+  description: >-
+    Exclude places missing latitude or longitude from the places map view using the
+    main map page's rule, with a unit test (SPEC.md CAP-8).
+  spec_checkpoint: false
+  done_checkpoint: false
+  invoke_dev_with: "Evidence and file locations: defect-evidence.md, section CAP-8."
