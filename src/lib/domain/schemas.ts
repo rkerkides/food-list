@@ -38,6 +38,21 @@ const optionalInteger = (min?: number, max?: number) =>
     message: "Must be a whole number",
   });
 
+export const placeStatusSchema = z.enum(PLACE_STATUSES);
+
+export const SPEND_RANGE_MESSAGE = "Minimum can't exceed maximum";
+
+/** Shared rule for every place schema: when both spends are set, the minimum may not exceed the maximum. */
+const spendRange = (
+  value: { expectedSpendMin?: number | null; expectedSpendMax?: number | null },
+  ctx: z.RefinementCtx,
+) => {
+  const { expectedSpendMin: min, expectedSpendMax: max } = value;
+  if (min != null && max != null && min > max) {
+    ctx.addIssue({ code: "custom", path: ["expectedSpendMax"], message: SPEND_RANGE_MESSAGE });
+  }
+};
+
 export const placeSearchResultSchema = z.object({
   provider: z.enum(["osm", "demo", "google", "manual"]),
   providerPlaceId: z.string().min(1),
@@ -79,7 +94,7 @@ export const addPlaceSchema = z.object({
   category: z.enum(PLACE_CATEGORIES).optional(),
   /** Set when the user has been warned about a likely duplicate and confirmed. */
   force: z.boolean().optional(),
-});
+}).superRefine(spendRange);
 
 export const manualPlaceSchema = z.object({
   name: z.string().trim().min(2, "Give the place a name"),
@@ -101,7 +116,7 @@ export const manualPlaceSchema = z.object({
   savedReason: optionalString,
   status: z.enum(PLACE_STATUSES).optional(),
   force: z.boolean().optional(),
-});
+}).superRefine(spendRange);
 
 export const venueLinkSubmissionSchema = z.object({
   googleMapsUrl: z
@@ -134,7 +149,7 @@ export const updatePlaceSchema = z.object({
   note: z.string().nullable().optional(),
   savedReason: z.string().nullable().optional(),
   status: z.enum(PLACE_STATUSES).optional(),
-});
+}).superRefine(spendRange);
 
 export const foodItemSchema = z.object({
   name: z.string().trim().min(1, "Name the dish"),

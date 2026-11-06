@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/auth/session";
 import {
   addPlaceSchema,
   manualPlaceSchema,
+  placeStatusSchema,
+  SPEND_RANGE_MESSAGE,
   updatePlaceSchema,
   venueLinkSubmissionSchema,
   type AddPlaceInput,
@@ -78,6 +80,9 @@ export async function completeVenueLinkReviewAction(
   if (values.some((value) => value !== null && (!Number.isFinite(value) || value < 0 || value > 2000))) {
     return { ok: false, error: "Enter a valid per-person budget." };
   }
+  if (details.expectedSpendMin !== null && details.expectedSpendMax !== null && details.expectedSpendMin > details.expectedSpendMax) {
+    return { ok: false, error: SPEND_RANGE_MESSAGE };
+  }
   const outcome = await completeVenueReview(user.id, id, { ...details, name }, reviewNote);
   if (outcome.status === "forbidden") return { ok: false, error: "Only you or someone in a shared circle can complete this review." };
   if (outcome.status === "not_found") return { ok: false, error: "That suggestion no longer exists." };
@@ -110,11 +115,16 @@ export type AddPlaceResult =
       duplicate?: { placeId: string; name: string; reason: string };
     };
 
+/** Add flows keep a generic message, except when the spend-range rule is the only problem. */
+function placeValidationError(issues: { message: string }[]) {
+  return issues.length === 1 && issues[0].message === SPEND_RANGE_MESSAGE ? SPEND_RANGE_MESSAGE : "Those details were not valid.";
+}
+
 export async function addPlaceAction(input: AddPlaceInput): Promise<AddPlaceResult> {
   const user = await requireUser();
   const parsed = addPlaceSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Those details were not valid.", code: "validation" };
+    return { ok: false, error: placeValidationError(parsed.error.issues), code: "validation" };
   }
 
   const cuisineCheck = await validateCuisines(
@@ -157,7 +167,7 @@ export async function createManualPlaceAction(input: ManualPlaceInput): Promise<
   const user = await requireUser();
   const parsed = manualPlaceSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Those details were not valid.", code: "validation" };
+    return { ok: false, error: placeValidationError(parsed.error.issues), code: "validation" };
   }
 
   const cuisineCheck = await validateCuisines(user.id, parsed.data.cuisines ?? []);
@@ -202,6 +212,12 @@ export async function updatePlaceAction(
     return { ok: false, error: "That place could not be found." };
   }
 
+  const storedMin = access.place?.expectedSpendMin;
+  const newMax = parsed.data.expectedSpendMax;
+  if (parsed.data.expectedSpendMin === undefined && typeof newMax === "number" && storedMin != null && storedMin > newMax) {
+    return { ok: false, error: SPEND_RANGE_MESSAGE };
+  }
+
   if (parsed.data.cuisines !== undefined) {
     const cuisineCheck = await validateCuisines(access.ownerUserId, parsed.data.cuisines);
     if (!cuisineCheck.ok) return { ok: false, error: cuisineCheck.error };
@@ -223,11 +239,13 @@ export async function setPlaceStatusAction(
   status: PlaceStatus,
 ): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
+  const parsedStatus = placeStatusSchema.safeParse(status);
+  if (!parsedStatus.success) return { ok: false, error: "Choose a valid status." };
   const access = await resolveEditablePlace(user.id, placeId);
   if (access.access !== "allowed" || !access.ownerUserId) {
     return { ok: false, error: access.access === "forbidden" ? SHARED_EDITING_DISABLED : "That place could not be found." };
   }
-  await setPlaceStatus(access.ownerUserId, placeId, status);
+  await setPlaceStatus(access.ownerUserId, placeId, parsedStatus.data);
   revalidatePath("/");
   revalidatePath("/places");
   revalidatePath(`/places/${placeId}`);
