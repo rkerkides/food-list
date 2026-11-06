@@ -2,9 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { getUploadedPlaceImage } from "@/lib/services/place-images";
 
+const GOOGLE_PHOTO_REF = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+
 /**
  * Serves private user uploads and proxies Google Places / explicitly tagged
  * Wikimedia Commons photos without exposing credentials or third-party URLs.
+ * Google photos require a session and accept only `places/{placeId}/photos/{photoId}`
+ * resource names.
  */
 export async function GET(request: NextRequest) {
   const ref = request.nextUrl.searchParams.get("ref");
@@ -22,6 +26,11 @@ export async function GET(request: NextRequest) {
     return proxyCommonsPhoto(ref.slice("commons:".length));
   }
 
+  // Anonymous callers and refs that are not Google photo resource names
+  // (`places/{placeId}/photos/{photoId}`) never reach the keyed upstream.
+  if (!GOOGLE_PHOTO_REF.test(ref)) return new NextResponse(null, { status: 404 });
+  const user = await getSessionUser();
+  if (!user) return new NextResponse(null, { status: 401 });
   if (!apiKey) return new NextResponse(null, { status: 404 });
 
   const url = new URL(`https://places.googleapis.com/v1/${ref}/media`);
@@ -40,7 +49,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse(response.body, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Cache-Control": "private, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {
