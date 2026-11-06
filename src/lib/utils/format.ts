@@ -69,21 +69,18 @@ export function relativeTime(input: string | Date | null | undefined, now = new 
   const diffMs = now.getTime() - date.getTime();
   const past = diffMs >= 0;
   const days = Math.round(Math.abs(diffMs) / 86_400_000);
+  if (days === 0) return "today";
+  if (days === 1) return past ? "yesterday" : "tomorrow";
   const label =
-    days === 0
-      ? "today"
-      : days === 1
-        ? "yesterday"
-        : days < 30
-          ? `${days} days`
-          : days < 60
-            ? "1 month"
-            : days < 365
-              ? `${Math.round(days / 30)} months`
-              : days < 730
-                ? "1 year"
-                : `${Math.round(days / 365)} years`;
-  if (days === 0) return past ? "today" : "today";
+    days < 30
+      ? `${days} days`
+      : days < 60
+        ? "1 month"
+        : days < 365
+          ? `${Math.round(days / 30)} months`
+          : days < 730
+            ? "1 year"
+            : `${Math.round(days / 365)} years`;
   return past ? `${label} ago` : `in ${label}`;
 }
 

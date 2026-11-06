@@ -383,7 +383,7 @@ function buildReasons({
   }
 
   if (visits.length === 0) {
-    const wait = Math.round(daysBetween(new Date(place.savedAt), now) / 30);
+    const wait = Math.floor(daysBetween(new Date(place.savedAt), now) / 30);
     reasons.push({
       label:
         wait >= 1
