@@ -84,3 +84,53 @@ describe("shared circles", () => {
     expect(await listSharedCircles(ctx.userId, ctx.repos)).toEqual([]);
   });
 });
+
+describe("demo account and circles", () => {
+  async function setupDemo() {
+    const ctx = await createTestContext("real@example.com");
+    const demo = await ctx.repos.users.create({
+      email: "demo@example.com",
+      name: "Demo Diner",
+      passwordHash: null,
+      isDemo: true,
+    });
+    return { ...ctx, demoId: demo.id };
+  }
+
+  it("refuses to let the demo account create a circle", async () => {
+    const { repos, demoId } = await setupDemo();
+    await expect(createSharedCircle(demoId, "Demo crew", repos)).rejects.toThrow(
+      "The demo account can't create or join circles.",
+    );
+    expect(await listSharedCircles(demoId, repos)).toEqual([]);
+  });
+
+  it("refuses to let the demo account add a real user to a circle it owns", async () => {
+    const { repos, userId, demoId } = await setupDemo();
+    const circleId = await repos.circles.create(demoId, "Seeded demo crew");
+    expect((await addCircleMember(demoId, circleId, "real@example.com", repos)).status).toBe("demo_account");
+    expect((await listSharedCircles(demoId, repos))[0].memberCount).toBe(1);
+    expect(await listSharedCircles(userId, repos)).toEqual([]);
+    expect(await repos.circles.accessibleUserIds(demoId)).toEqual([demoId]);
+    expect(await repos.circles.accessibleUserIds(userId)).toEqual([userId]);
+  });
+
+  it("refuses to let a real user add the demo email in any case", async () => {
+    const { repos, userId, demoId } = await setupDemo();
+    const circleId = await createSharedCircle(userId, "Dinner crew", repos);
+    expect((await addCircleMember(userId, circleId, "Demo@Example.COM", repos)).status).toBe("demo_account");
+    expect((await listSharedCircles(userId, repos))[0].memberCount).toBe(1);
+    expect(await listSharedCircles(demoId, repos)).toEqual([]);
+    expect(await repos.circles.accessibleUserIds(userId)).toEqual([userId]);
+    expect(await repos.circles.accessibleUserIds(demoId)).toEqual([demoId]);
+  });
+
+  it("still lets real users create circles and add each other", async () => {
+    const { repos, userId } = await setupDemo();
+    const friendId = await createSecondUser(repos, "friend@example.com");
+    const circleId = await createSharedCircle(userId, "Dinner crew", repos);
+    expect(typeof circleId).toBe("string");
+    expect((await addCircleMember(userId, circleId, "friend@example.com", repos)).status).toBe("added");
+    expect((await repos.circles.accessibleUserIds(friendId)).sort()).toEqual([userId, friendId].sort());
+  });
+});

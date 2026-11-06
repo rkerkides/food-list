@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import {
   addCircleMember,
   createSharedCircle,
+  DEMO_CIRCLE_MESSAGE,
   deleteSharedCircle,
   removeCircleMember,
 } from "@/lib/services/circles";
@@ -51,6 +52,7 @@ export async function addCircleMemberAction(
   const user = await requireUser();
   try {
     const result = await addCircleMember(user.id, circleId, email);
+    if (result.status === "demo_account") return { ok: false, error: DEMO_CIRCLE_MESSAGE };
     if (result.status === "user_not_found") {
       return { ok: false, error: "That person needs to create an account first." };
     }
