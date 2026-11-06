@@ -129,6 +129,52 @@ export const venueLinkSubmissionSchema = z.object({
   note: optionalString.pipe(z.string().max(1000).nullable().optional()),
 });
 
+export const VENUE_NAME_MESSAGE = "Add the venue name before completing the review.";
+export const VENUE_TYPE_MESSAGE = "Choose a valid venue type.";
+export const VENUE_BUDGET_MESSAGE = "Enter a valid per-person budget.";
+
+/** Trimmed text with a length cap; blank becomes null. */
+const nullableText = (max: number, label: string) =>
+  z
+    .string({ error: `Enter a valid ${label}.` })
+    .trim()
+    .max(max, `Keep the ${label} to ${max} characters or fewer.`)
+    .transform((value) => (value.length === 0 ? null : value))
+    .nullable();
+
+/** Reviewer note on a venue-link submission (status change or completed review). */
+export const reviewNoteSchema = nullableText(1000, "review note");
+
+/** Numbers only (no string coercion), then the shared 0–2000 bounds. */
+const venueBudget = z
+  .unknown()
+  .refine((value): boolean => value == null || typeof value === "number", VENUE_BUDGET_MESSAGE)
+  .pipe(optionalNumber(0, 2000));
+
+/** Details a reviewer confirms when completing a venue-link review. */
+export const venueReviewSchema = z.object({
+  name: z
+    .string({ error: VENUE_NAME_MESSAGE })
+    .trim()
+    .min(2, VENUE_NAME_MESSAGE)
+    .max(120, "Keep the venue name to 120 characters or fewer."),
+  category: z.enum(PLACE_CATEGORIES, { error: VENUE_TYPE_MESSAGE }).nullable(),
+  cuisines: z
+    .array(
+      z
+        .string({ error: "Choose valid cuisines." })
+        .trim()
+        .min(1, "Remove the empty cuisine.")
+        .max(50, "Keep each cuisine to 50 characters or fewer."),
+      { error: "Choose valid cuisines." },
+    )
+    .max(12, "Choose up to 12 cuisines."),
+  address: nullableText(200, "address"),
+  area: nullableText(100, "area"),
+  expectedSpendMin: venueBudget,
+  expectedSpendMax: venueBudget,
+}).superRefine(spendRange);
+
 export const updatePlaceSchema = z.object({
   name: z.string().trim().min(1).optional(),
   category: z.enum(PLACE_CATEGORIES).optional(),

@@ -2,6 +2,7 @@ import type { Repositories } from "@/lib/data/repositories";
 import { findDuplicate } from "@/lib/domain/place-merge";
 import type { Place, PlaceCategory } from "@/lib/domain/types";
 import { newId } from "@/lib/utils/ids";
+import { validateCuisines } from "./cuisines";
 import { createManualPlace } from "./places";
 import { defaultRepositories } from "./library";
 
@@ -34,13 +35,21 @@ export async function completeVenueReview(
   details: VenueReviewDetails,
   reviewNote: string | null,
   repos?: Repositories,
-): Promise<{ status: "completed"; placeId: string; added: string[]; contradictions: VenueReviewContradiction[] } | { status: "forbidden" | "not_found" | "duplicate" }> {
+): Promise<
+  | { status: "completed"; placeId: string; added: string[]; contradictions: VenueReviewContradiction[] }
+  | { status: "invalid_cuisines"; error: string }
+  | { status: "forbidden" | "not_found" | "duplicate" }
+> {
   const repo = repos ?? (await defaultRepositories());
   const submission = await repo.venueLinkSubmissions.findById(submissionId);
   if (!submission) return { status: "not_found" };
   if (submission.userId !== reviewerId && !(await repo.circles.sharesCircle(reviewerId, submission.userId))) {
     return { status: "forbidden" };
   }
+  // The place belongs to the submitter, so their catalogue decides which cuisines are valid.
+  const cuisineCheck = await validateCuisines(submission.userId, details.cuisines, repo);
+  if (!cuisineCheck.ok) return { status: "invalid_cuisines", error: cuisineCheck.error };
+  details = { ...details, cuisines: cuisineCheck.cuisines };
 
   const places = await repo.places.listByUser(submission.userId);
   const candidate = {

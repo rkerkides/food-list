@@ -6,15 +6,17 @@ import {
   addPlaceSchema,
   manualPlaceSchema,
   placeStatusSchema,
+  reviewNoteSchema,
   SPEND_RANGE_MESSAGE,
   updatePlaceSchema,
+  VENUE_BUDGET_MESSAGE,
   venueLinkSubmissionSchema,
+  venueReviewSchema,
   type AddPlaceInput,
   type ManualPlaceInput,
   type UpdatePlaceInput,
 } from "@/lib/domain/schemas";
 import {
-  PLACE_CATEGORIES,
   VENUE_LINK_SUBMISSION_STATUSES,
   type PlaceStatus,
   type VenueLinkSubmissionStatus,
@@ -58,11 +60,24 @@ export async function reviewVenueLinkAction(id: string, status: VenueLinkSubmiss
   if (!(VENUE_LINK_SUBMISSION_STATUSES as readonly string[]).includes(status)) {
     return { ok: false as const, error: "Choose a valid review status." };
   }
-  const result = await reviewVenueLink(id, user.id, status, reviewNote);
+  const note = reviewNoteSchema.safeParse(reviewNote);
+  if (!note.success) return { ok: false as const, error: note.error.issues[0]?.message ?? "Enter a valid review note." };
+  const result = await reviewVenueLink(id, user.id, status, note.data);
   if (result.status === "forbidden") return { ok: false as const, error: "Only you or someone in a shared circle can review this suggestion." };
   if (result.status === "not_found") return { ok: false as const, error: "That suggestion no longer exists." };
   revalidatePath("/profile/review-queue");
   return { ok: true as const };
+}
+
+/** First venue-review issue as a user-facing message; budget bounds share one message, the range rule keeps its own. */
+function venueReviewError(issues: { path: PropertyKey[]; message: string }[]) {
+  const issue = issues[0];
+  if (!issue) return "Could not complete this review.";
+  const field = issue.path[0];
+  if ((field === "expectedSpendMin" || field === "expectedSpendMax") && issue.message !== SPEND_RANGE_MESSAGE) {
+    return VENUE_BUDGET_MESSAGE;
+  }
+  return issue.path.length === 0 ? "Could not complete this review." : issue.message;
 }
 
 export async function completeVenueLinkReviewAction(
@@ -71,21 +86,18 @@ export async function completeVenueLinkReviewAction(
   reviewNote: string | null,
 ): Promise<{ ok: true; placeId: string; added: string[]; contradictions: number } | { ok: false; error: string }> {
   const user = await requireUser();
-  const name = details.name.trim();
-  if (name.length < 2) return { ok: false, error: "Add the venue name before completing the review." };
-  if (details.category !== null && !PLACE_CATEGORIES.includes(details.category)) {
-    return { ok: false, error: "Choose a valid venue type." };
-  }
-  const values = [details.expectedSpendMin, details.expectedSpendMax];
-  if (values.some((value) => value !== null && (!Number.isFinite(value) || value < 0 || value > 2000))) {
-    return { ok: false, error: "Enter a valid per-person budget." };
-  }
-  if (details.expectedSpendMin !== null && details.expectedSpendMax !== null && details.expectedSpendMin > details.expectedSpendMax) {
-    return { ok: false, error: SPEND_RANGE_MESSAGE };
-  }
-  const outcome = await completeVenueReview(user.id, id, { ...details, name }, reviewNote);
+  const parsed = venueReviewSchema.safeParse(details);
+  if (!parsed.success) return { ok: false, error: venueReviewError(parsed.error.issues) };
+  const note = reviewNoteSchema.safeParse(reviewNote);
+  if (!note.success) return { ok: false, error: note.error.issues[0]?.message ?? "Enter a valid review note." };
+  const outcome = await completeVenueReview(user.id, id, {
+    ...parsed.data,
+    expectedSpendMin: parsed.data.expectedSpendMin ?? null,
+    expectedSpendMax: parsed.data.expectedSpendMax ?? null,
+  }, note.data);
   if (outcome.status === "forbidden") return { ok: false, error: "Only you or someone in a shared circle can complete this review." };
   if (outcome.status === "not_found") return { ok: false, error: "That suggestion no longer exists." };
+  if (outcome.status === "invalid_cuisines") return { ok: false, error: outcome.error };
   if (outcome.status === "duplicate") return { ok: false, error: "This venue matches another saved place. Open that place and complete the review there." };
   if (outcome.status !== "completed") return { ok: false, error: "Could not complete this review." };
   revalidatePath("/");
