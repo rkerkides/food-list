@@ -24,15 +24,17 @@ export function TopNav() {
     <nav className="hidden items-center gap-1 md:flex">
       {LINKS.map((link) => {
         const active = isActive(pathname, link.href);
+        const Icon = link.icon;
         return (
           <Link
             key={link.href}
             href={link.href}
             className={cn(
-              "rounded-full px-3.5 py-2 text-sm font-medium transition",
-              active ? "bg-surface-muted text-ink" : "text-ink-soft hover:bg-surface-muted/70",
+              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition",
+              active ? "bg-surface text-ink shadow-sm ring-1 ring-line/70" : "text-ink-soft hover:bg-surface/70 hover:text-ink",
             )}
           >
+            <Icon className="size-3.5" strokeWidth={active ? 2.2 : 1.8} />
             {link.label}
           </Link>
         );
@@ -46,7 +48,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/95 backdrop-blur-md md:hidden"
+      className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/95 backdrop-blur-xl md:hidden"
       style={{ boxShadow: "var(--shadow-nav)" }}
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-between px-2 py-1.5">
@@ -79,7 +81,7 @@ export function BottomNav() {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium transition",
+                  "flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium transition active:scale-[0.97]",
                   active ? "text-ink" : "text-ink-muted",
                 )}
               >

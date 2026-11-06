@@ -142,6 +142,9 @@ export function countActiveFilters(query: PlaceListQuery): number {
 
 export interface DecideQueryParams {
   area: string | null;
+  originLatitude: number | null;
+  originLongitude: number | null;
+  originLabel: string | null;
   maxDistanceKm: number | null;
   cuisines: string[];
   foodQuery: string | null;
@@ -164,6 +167,9 @@ export function parseDecideParams(params: RawSearchParams): DecideQueryParams {
   const visitStateRaw = single(params.visitState);
   return {
     area: single(params.area),
+    originLatitude: num(params.lat),
+    originLongitude: num(params.lng),
+    originLabel: single(params.origin),
     maxDistanceKm: num(params.maxDistance),
     cuisines: list(params.cuisine),
     foodQuery: single(params.food),

@@ -238,4 +238,266 @@ create index if not exists place_refreshes_place_idx on place_refreshes(place_id
 `,
 };
 
-export const MIGRATIONS: Migration[] = [init];
+const osmCatalog: Migration = {
+  id: "0002",
+  name: "osm_catalog",
+  sqlite: `
+create table if not exists osm_places (
+  provider_place_id text primary key,
+  osm_type text not null,
+  osm_id text not null,
+  name text not null,
+  category text not null,
+  cuisines text not null default '[]',
+  address text,
+  city text,
+  area text,
+  district text,
+  latitude real not null,
+  longitude real not null,
+  website text,
+  phone text,
+  opening_hours text,
+  search_text text not null,
+  tags text not null default '{}',
+  imported_at text not null
+);
+create unique index if not exists osm_places_element_unique on osm_places(osm_type, osm_id);
+create index if not exists osm_places_city_idx on osm_places(city);
+create index if not exists osm_places_category_idx on osm_places(category);
+create index if not exists osm_places_name_idx on osm_places(name);
+
+create table if not exists osm_catalog_metadata (
+  key text primary key,
+  value text not null
+);
+`,
+  postgres: `
+create table if not exists osm_places (
+  provider_place_id text primary key,
+  osm_type text not null,
+  osm_id text not null,
+  name text not null,
+  category text not null,
+  cuisines text not null default '[]',
+  address text,
+  city text,
+  area text,
+  district text,
+  latitude double precision not null,
+  longitude double precision not null,
+  website text,
+  phone text,
+  opening_hours text,
+  search_text text not null,
+  tags text not null default '{}',
+  imported_at text not null
+);
+create unique index if not exists osm_places_element_unique on osm_places(osm_type, osm_id);
+create index if not exists osm_places_city_idx on osm_places(city);
+create index if not exists osm_places_category_idx on osm_places(category);
+create index if not exists osm_places_name_idx on osm_places(name);
+
+create table if not exists osm_catalog_metadata (
+  key text primary key,
+  value text not null
+);
+`,
+};
+
+const placeImageUploads: Migration = {
+  id: "0003",
+  name: "place_image_uploads",
+  sqlite: `
+create table if not exists place_image_uploads (
+  place_id text primary key references places(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  mime_type text not null,
+  data_base64 text not null,
+  byte_size integer not null,
+  updated_at text not null
+);
+create index if not exists place_image_uploads_user_idx on place_image_uploads(user_id);
+`,
+  postgres: `
+create table if not exists place_image_uploads (
+  place_id text primary key references places(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  mime_type text not null,
+  data_base64 text not null,
+  byte_size integer not null,
+  updated_at text not null
+);
+create index if not exists place_image_uploads_user_idx on place_image_uploads(user_id);
+`,
+};
+
+const sharedCircles: Migration = {
+  id: "0004",
+  name: "shared_circles",
+  sqlite: `
+create table if not exists shared_circles (
+  id text primary key,
+  owner_user_id text not null references users(id) on delete cascade,
+  name text not null,
+  created_at text not null
+);
+create index if not exists shared_circles_owner_idx on shared_circles(owner_user_id);
+
+create table if not exists shared_circle_members (
+  circle_id text not null references shared_circles(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  role text not null default 'member',
+  joined_at text not null,
+  primary key(circle_id, user_id)
+);
+create index if not exists shared_circle_members_user_idx on shared_circle_members(user_id);
+`,
+  postgres: `
+create table if not exists shared_circles (
+  id text primary key,
+  owner_user_id text not null references users(id) on delete cascade,
+  name text not null,
+  created_at text not null
+);
+create index if not exists shared_circles_owner_idx on shared_circles(owner_user_id);
+
+create table if not exists shared_circle_members (
+  circle_id text not null references shared_circles(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
+  role text not null default 'member',
+  joined_at text not null,
+  primary key(circle_id, user_id)
+);
+create index if not exists shared_circle_members_user_idx on shared_circle_members(user_id);
+`,
+};
+
+const placeGoogleMapsUrl: Migration = {
+  id: "0005",
+  name: "place_google_maps_url",
+  sqlite: `
+alter table places add column google_maps_url text;
+`,
+  postgres: `
+alter table places add column if not exists google_maps_url text;
+`,
+};
+
+const cuisineCatalog: Migration = {
+  id: "0006",
+  name: "cuisine_catalog",
+  sqlite: `
+create table if not exists cuisine_catalog (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  name text not null,
+  normalized_name text not null,
+  created_at text not null,
+  updated_at text not null
+);
+create unique index if not exists cuisine_catalog_user_name_unique
+  on cuisine_catalog(user_id, normalized_name);
+create index if not exists cuisine_catalog_user_idx on cuisine_catalog(user_id, name);
+`,
+  postgres: `
+create table if not exists cuisine_catalog (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  name text not null,
+  normalized_name text not null,
+  created_at text not null,
+  updated_at text not null
+);
+create unique index if not exists cuisine_catalog_user_name_unique
+  on cuisine_catalog(user_id, normalized_name);
+create index if not exists cuisine_catalog_user_idx on cuisine_catalog(user_id, name);
+`,
+};
+
+const venueLinkSubmissions: Migration = {
+  id: "0007",
+  name: "venue_link_submissions",
+  sqlite: `
+create table if not exists venue_link_submissions (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  google_maps_url text not null,
+  note text,
+  latitude real,
+  longitude real,
+  status text not null default 'pending',
+  review_note text,
+  reviewed_by text references users(id) on delete set null,
+  reviewed_at text,
+  created_at text not null
+);
+create index if not exists venue_link_submissions_status_idx on venue_link_submissions(status, created_at asc);
+`,
+  postgres: `
+create table if not exists venue_link_submissions (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  google_maps_url text not null,
+  note text,
+  latitude double precision,
+  longitude double precision,
+  status text not null default 'pending',
+  review_note text,
+  reviewed_by text references users(id) on delete set null,
+  reviewed_at text,
+  created_at text not null
+);
+create index if not exists venue_link_submissions_status_idx on venue_link_submissions(status, created_at asc);
+`,
+};
+
+const sharedContentEditing: Migration = {
+  id: "0008",
+  name: "shared_content_editing",
+  sqlite: `
+alter table users add column shared_content_editable_by_group integer not null default 0;
+`,
+  postgres: `
+alter table users add column if not exists shared_content_editable_by_group integer not null default 0;
+`,
+};
+
+const accountAdministration: Migration = {
+  id: "0009",
+  name: "account_administration",
+  sqlite: `
+alter table users add column is_admin integer not null default 0 check (is_admin in (0, 1));
+create table admin_audit_log (
+  id text primary key,
+  actor_user_id text references users(id) on delete set null,
+  target_user_id text references users(id) on delete set null,
+  action text not null,
+  created_at text not null
+);
+create index admin_audit_actor_action_idx on admin_audit_log(actor_user_id, action, created_at);
+`,
+  postgres: `
+alter table users add column if not exists is_admin integer not null default 0 check (is_admin in (0, 1));
+create table if not exists admin_audit_log (
+  id text primary key,
+  actor_user_id text references users(id) on delete set null,
+  target_user_id text references users(id) on delete set null,
+  action text not null,
+  created_at text not null
+);
+create index if not exists admin_audit_actor_action_idx on admin_audit_log(actor_user_id, action, created_at);
+`,
+};
+
+export const MIGRATIONS: Migration[] = [
+  init,
+  osmCatalog,
+  placeImageUploads,
+  sharedCircles,
+  placeGoogleMapsUrl,
+  cuisineCatalog,
+  venueLinkSubmissions,
+  sharedContentEditing,
+  accountAdministration,
+];

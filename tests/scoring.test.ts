@@ -166,3 +166,34 @@ describe("budget helpers", () => {
     expect(budget.min).toBe(40);
   });
 });
+
+describe("unvisited place reason", () => {
+  const DAY = 86_400_000;
+  const now = new Date("2026-09-18T09:00:00.000Z");
+
+  function unvisitedReason(savedDaysAgo: number): string {
+    const savedAt = new Date(now.getTime() - savedDaysAgo * DAY).toISOString();
+    const ctx = prepared({ id: "plc_unvisited", savedAt }, {}, { now });
+    const result = scoreCandidate({ prepared: ctx.prepared, query: {}, preferences: ctx.preferences, now });
+    const reason = result.reasons.find((entry) => /^Saved /.test(entry.label));
+    expect(reason, `no "Saved …" reason in ${JSON.stringify(result.reasons)}`).toBeDefined();
+    return reason!.label;
+  }
+
+  it("calls a place saved 15 days ago recent", () => {
+    expect(unvisitedReason(15)).toBe("Saved recently and not tried yet");
+  });
+
+  it("still calls a place saved 29 days 23 hours ago recent", () => {
+    expect(unvisitedReason(29 + 23 / 24)).toBe("Saved recently and not tried yet");
+  });
+
+  it("starts month wording at 30 days", () => {
+    expect(unvisitedReason(30)).toBe("Saved 1 month ago but never visited");
+    expect(unvisitedReason(59)).toBe("Saved 1 month ago but never visited");
+  });
+
+  it("counts whole months", () => {
+    expect(unvisitedReason(60)).toBe("Saved 2 months ago but never visited");
+  });
+});

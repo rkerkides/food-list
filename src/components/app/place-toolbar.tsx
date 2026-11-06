@@ -21,7 +21,7 @@ export function PlaceToolbar({ count }: { count: number }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/80 bg-surface/70 px-3 py-2 shadow-sm sm:px-3.5">
       <p className="text-sm text-ink-muted">
         {count} {count === 1 ? "place" : "places"}
       </p>

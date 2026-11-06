@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { searchPlacesForUser } from "@/lib/services/places";
 import { PlaceProviderError } from "@/lib/places/types";
+import { describeProvider } from "@/lib/places";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (query.length < 2) {
     return NextResponse.json({
       results: [],
-      provider: { id: "demo", label: "Demo Cyprus dataset", mode: "demo", configured: true },
+      provider: describeProvider(),
     });
   }
 

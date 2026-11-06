@@ -107,6 +107,24 @@ describe("place management", () => {
     expect(outcome.place.overrides).toContain("name");
   });
 
+  it("keeps a Google Maps link and derives coordinates for a manual place", async () => {
+    const { repos, userId } = await createTestContext();
+    const googleMapsUrl =
+      "https://www.google.com/maps/place/KONA+KAI/@35.1707098,33.3735758,17z/data=!3m1!4b1!4m6!3m5!1s0x14de19dc2253f107:0xa552f54e2c512746!8m2!3d35.1707054!4d33.3761561";
+    const outcome = await createManualPlace(
+      userId,
+      { name: "KONA KAI", category: "restaurant", googleMapsUrl },
+      repos,
+    );
+
+    expect(outcome.status).toBe("created");
+    if (outcome.status !== "created") throw new Error("expected creation");
+    expect(outcome.place.googleMapsUrl).toBe(googleMapsUrl);
+    expect(outcome.place.latitude).toBeCloseTo(35.1707054);
+    expect(outcome.place.longitude).toBeCloseTo(33.3761561);
+    expect(outcome.place.overrides).toContain("googleMapsUrl");
+  });
+
   it("keeps user edits when external data is refreshed", async () => {
     const { repos, userId } = await createTestContext();
     const created = await addPlaceFromProvider(userId, { result: providerResult }, repos);
@@ -131,6 +149,33 @@ describe("place management", () => {
     expect(refreshed.place!.expectedSpendMin).toBe(18);
     expect(refreshed.place!.budgetSource).toBe("manual");
     expect(refreshed.preserved).toContain("name");
+  });
+
+  it("keeps manually completed public facts and map coordinates on refresh", async () => {
+    const { repos, userId } = await createTestContext();
+    const created = await addPlaceFromProvider(userId, { result: providerResult }, repos);
+    if (created.status !== "created") throw new Error("expected creation");
+
+    await updatePlace(
+      userId,
+      created.place.id,
+      {
+        publicRating: 4.8,
+        publicRatingCount: 999,
+        latitude: 35.17,
+        longitude: 33.36,
+      },
+      repos,
+    );
+
+    const refreshed = await refreshPlace(userId, created.place.id, repos);
+    expect(refreshed.place!.publicRating).toBe(4.8);
+    expect(refreshed.place!.publicRatingCount).toBe(999);
+    expect(refreshed.place!.latitude).toBe(35.17);
+    expect(refreshed.place!.longitude).toBe(33.36);
+    expect(refreshed.preserved).toEqual(
+      expect.arrayContaining(["publicRating", "publicRatingCount", "latitude", "longitude"]),
+    );
   });
 
   it("records a refresh log entry", async () => {

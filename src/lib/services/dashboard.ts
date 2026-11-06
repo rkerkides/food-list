@@ -2,6 +2,7 @@ import type { Repositories } from "@/lib/data/repositories";
 import { resolveBudget } from "@/lib/domain/budget";
 import { isOpenAt } from "@/lib/domain/opening-hours";
 import { preparePlaces } from "@/lib/domain/place-view";
+import { isImportedHistory } from "@/lib/domain/visit-history";
 import { matchPercent, scoreCandidate } from "@/lib/domain/scoring";
 import type { FoodItem, PlaceWithStats, Recommendation, Visit, VisitWithItems } from "@/lib/domain/types";
 import { loadUserLibrary, withStats, type UserLibrary } from "./library";
@@ -62,7 +63,7 @@ export async function loadDashboard(
 
   const visitsByPlace = groupVisits(visits);
   const itemsByVisit = groupItems(items);
-  const recentVisits: VisitWithItems[] = visits.slice(0, 5).map((visit) => ({
+  const recentVisits: VisitWithItems[] = visits.filter((visit) => !isImportedHistory(visit)).slice(0, 5).map((visit) => ({
     ...visit,
     items: itemsByVisit.get(visit.id) ?? [],
   }));

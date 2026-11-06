@@ -1,5 +1,5 @@
 import { resolveBudget, type BudgetEstimate } from "./budget";
-import { distanceFromArea } from "./geo";
+import { distanceFromOrigin, type Coordinates } from "./geo";
 import { isOpenAt } from "./opening-hours";
 import { placeAffinityScore } from "./preferences";
 import type { FoodItem, PlaceWithStats, UserPreferences, Visit } from "./types";
@@ -21,6 +21,7 @@ export interface PreparedPlace {
 
 export interface PrepareOptions {
   originArea?: string | null;
+  originCoordinates?: Coordinates | null;
   now?: Date;
   timeZone?: string;
 }
@@ -42,7 +43,10 @@ export function preparePlace(
     visits,
     items,
     budget: resolveBudget(place, visits),
-    distanceKm: distanceFromArea(place, options.originArea),
+    distanceKm: distanceFromOrigin(place, {
+      origin: options.originCoordinates,
+      originArea: options.originArea,
+    }),
     isOpenNow: isOpenAt(place.openingHours, options.now ?? new Date(), options.timeZone),
     affinity: placeAffinityScore(place, preferences),
   };

@@ -6,9 +6,10 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireUser } from "@/lib/auth/session";
 import { filterPreparedPlaces, sortPreparedPlaces } from "@/lib/domain/filters";
+import { toMapPoints } from "@/lib/domain/map-points";
 import { parsePlaceListQuery, type RawSearchParams } from "@/lib/domain/place-query";
 import { loadUserLibrary } from "@/lib/services/library";
-import { formatBudgetRange, formatDistanceKm, relativeTime } from "@/lib/utils/format";
+import { formatDistanceKm, relativeTime } from "@/lib/utils/format";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 
@@ -42,9 +43,7 @@ export default async function MapPage({
     query.city ? "distance" : "recommendation",
   );
 
-  const withCoords = filtered.filter(
-    (prepared) => prepared.place.latitude != null && prepared.place.longitude != null,
-  );
+  const points = toMapPoints(filtered);
 
   const cities = [...new Set(library.places.map((place) => place.city).filter(Boolean))].sort();
 
@@ -54,7 +53,7 @@ export default async function MapPage({
         <div className="space-y-1">
           <h1 className="font-display text-3xl font-semibold">Map</h1>
           <p className="text-sm text-ink-muted">
-            {withCoords.length} of {library.places.length} places have coordinates
+            {points.length} of {library.places.length} places have coordinates
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -86,22 +85,7 @@ export default async function MapPage({
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
           <MapCanvas
-            points={withCoords.map((prepared) => ({
-              id: prepared.place.id,
-              name: prepared.place.name,
-              category: prepared.place.category,
-              latitude: prepared.place.latitude as number,
-              longitude: prepared.place.longitude as number,
-              area: prepared.place.area,
-              city: prepared.place.city,
-              publicRating: prepared.place.publicRating,
-              personalRating: prepared.place.stats.personalRating,
-              budgetText: formatBudgetRange(prepared.budget.min, prepared.budget.max, {
-                approximate: prepared.budget.approximate,
-              }),
-              distanceKm: prepared.distanceKm,
-              status: prepared.place.status,
-            }))}
+            points={points}
           />
 
           <Card className="divide-y divide-line lg:max-h-[560px] lg:overflow-y-auto">
@@ -114,6 +98,7 @@ export default async function MapPage({
                 <PlaceVisual
                   name={prepared.place.name}
                   category={prepared.place.category}
+                  cuisines={prepared.place.cuisines}
                   photoRef={prepared.place.photoRef}
                   size="thumb"
                   className="shrink-0"
@@ -157,9 +142,8 @@ export default async function MapPage({
       )}
 
       <p className="text-xs text-ink-muted">
-        The map is schematic (a projected Cyprus outline) so it works offline and without a tile
-        provider. Coordinates come from the places provider and can be opened in Google Maps from
-        any place page.
+        The map uses OpenStreetMap tiles. Allow device location to see yourself on the map, or set
+        a different Cyprus address, area, or coordinate pair as the distance starting point.
       </p>
     </div>
   );

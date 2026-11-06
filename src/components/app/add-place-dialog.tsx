@@ -22,8 +22,9 @@ import { formatBudgetRange, formatRating } from "@/lib/utils/format";
 import { ArrowLeft, Check, Loader2, MapPin, Plus, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { addPlaceAction, createManualPlaceAction } from "@/app/actions/places";
+import { addPlaceAction, createManualPlaceAction, submitVenueLinkAction } from "@/app/actions/places";
 import { PlaceVisual } from "./place-visual";
+import { CuisinePicker } from "./cuisine-picker";
 
 type SearchResult = PlaceSearchResult & { alreadySaved: boolean; savedPlaceId: string | null };
 
@@ -44,7 +45,7 @@ export function AddPlaceDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [step, setStep] = React.useState<"search" | "details" | "manual">("search");
+  const [step, setStep] = React.useState<"search" | "details" | "manual" | "submit-link">("search");
   const [query, setQuery] = React.useState("");
   const [city, setCity] = React.useState<string>("");
   const [results, setResults] = React.useState<SearchResult[]>([]);
@@ -55,6 +56,9 @@ export function AddPlaceDialog({
   const [duplicate, setDuplicate] = React.useState<DuplicateWarning | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [linkSubmitted, setLinkSubmitted] = React.useState(false);
+  const [detailsCuisines, setDetailsCuisines] = React.useState<string[]>([]);
+  const [manualCuisines, setManualCuisines] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
@@ -64,8 +68,11 @@ export function AddPlaceDialog({
     setSelected(null);
     setDuplicate(null);
     setSubmitError(null);
+    setLinkSubmitted(false);
     setSearchError(null);
     setProviderNote(null);
+    setDetailsCuisines([]);
+    setManualCuisines([]);
   }, []);
 
   React.useEffect(() => {
@@ -131,6 +138,7 @@ export function AddPlaceDialog({
       return;
     }
     setSelected(result);
+    setDetailsCuisines(result.cuisines);
     setDuplicate(null);
     setStep("details");
   }
@@ -153,7 +161,8 @@ export function AddPlaceDialog({
       city: readString(form.get("city")),
       area: readString(form.get("area")),
       address: readString(form.get("address")),
-      cuisines: readList(form.get("cuisines")),
+      googleMapsUrl: readString(form.get("googleMapsUrl")),
+      cuisines: detailsCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
       expectedSpendMax: readNumber(form.get("expectedSpendMax")),
@@ -188,7 +197,8 @@ export function AddPlaceDialog({
       city: (readString(form.get("city")) as never) ?? null,
       area: readString(form.get("area")),
       address: readString(form.get("address")),
-      cuisines: readList(form.get("cuisines")),
+      googleMapsUrl: readString(form.get("googleMapsUrl")),
+      cuisines: manualCuisines,
       tags: readList(form.get("tags")),
       expectedSpendMin: readNumber(form.get("expectedSpendMin")),
       expectedSpendMax: readNumber(form.get("expectedSpendMax")),
@@ -208,6 +218,25 @@ export function AddPlaceDialog({
       return;
     }
     setSubmitError(outcome.error);
+  }
+
+  async function handleLinkSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const outcome = await submitVenueLinkAction({
+      googleMapsUrl: readString(form.get("googleMapsUrl")) ?? "",
+      note: readString(form.get("note")),
+    });
+
+    setSubmitting(false);
+    if (!outcome.ok) {
+      setSubmitError(outcome.error);
+      return;
+    }
+    setLinkSubmitted(true);
   }
 
   function finish(placeId: string) {
@@ -257,12 +286,18 @@ export function AddPlaceDialog({
                 </Button>
                 <div>
                   <DialogTitle className="text-xl">
-                    {step === "manual" ? "Add it by hand" : selected?.name}
+                    {step === "manual"
+                      ? "Add it by hand"
+                      : step === "submit-link"
+                        ? "Submit a venue link"
+                        : selected?.name}
                   </DialogTitle>
                   <p className="text-xs text-ink-muted">
                     {step === "manual"
                       ? "For places the provider does not know about."
-                      : providerNote ?? `Details fetched from ${providerLabel(provider)}`}
+                      : step === "submit-link"
+                        ? "Send a Google Maps place link for review and enrichment."
+                        : providerNote ?? `Details fetched from ${providerLabel(provider)}`}
                   </p>
                 </div>
               </div>
@@ -336,6 +371,7 @@ export function AddPlaceDialog({
                     <PlaceVisual
                       name={result.name}
                       category={result.category}
+                      cuisines={result.cuisines}
                       photoRef={result.photoRef}
                       size="thumb"
                       className="shrink-0"
@@ -375,11 +411,73 @@ export function AddPlaceDialog({
                 onClick={() => {
                   setStep("manual");
                   setDuplicate(null);
+                  setManualCuisines([]);
                 }}
               >
                 Can’t find it? Add the place manually
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-ink-soft"
+                onClick={() => {
+                  setStep("submit-link");
+                  setSubmitError(null);
+                  setLinkSubmitted(false);
+                }}
+              >
+                Have a Google Maps link? Submit it for review
+              </Button>
             </DialogBody>
+          ) : null}
+
+          {step === "submit-link" ? (
+            linkSubmitted ? (
+              <>
+                <DialogBody className="space-y-4">
+                  <Alert variant="success" title="Venue queued for review">
+                    Thanks — the link is now in the venue queue. A reviewer can fill in the details
+                    before it is added to the shared list.
+                  </Alert>
+                </DialogBody>
+                <DialogFooter>
+                  <Button type="button" onClick={() => handleOpenChange(false)}>
+                    Done
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : (
+              <form onSubmit={handleLinkSubmit}>
+                <DialogBody className="space-y-4">
+                  <Alert variant="info" title="A quick way to suggest a venue">
+                    Paste the exact Google Maps place link. We will retain its coordinates when
+                    available, then review and populate the venue details.
+                  </Alert>
+                  {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+                  <Field label="Google Maps link" hint="Use a link for a specific place, not a search page.">
+                    <Input
+                      name="googleMapsUrl"
+                      type="url"
+                      required
+                      autoFocus
+                      placeholder="https://www.google.com/maps/place/..."
+                    />
+                  </Field>
+                  <Field label="Anything we should know?" hint="Optional — cuisine, why it is worth adding, or any details you noticed.">
+                    <Textarea name="note" rows={3} maxLength={1000} placeholder="Great seafood spot near the marina" />
+                  </Field>
+                </DialogBody>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setStep("search")}>
+                    Back to search
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Submit for review
+                  </Button>
+                </DialogFooter>
+              </form>
+            )
           ) : null}
 
           {step === "details" && selected ? (
@@ -390,6 +488,7 @@ export function AddPlaceDialog({
                     <PlaceVisual
                       name={selected.name}
                       category={selected.category}
+                      cuisines={selected.cuisines}
                       photoRef={selected.photoRef}
                       size="thumb"
                     />
@@ -418,6 +517,11 @@ export function AddPlaceDialog({
                   </div>
                 </div>
 
+                <Alert variant="info" title="Make this a stronger recommendation">
+                  Cuisines, location and expected spend make future matching more useful. After a
+                  visit, add your own rating and at least one dish to teach Trapezi your taste.
+                </Alert>
+
                 {duplicate ? (
                   <Alert variant="error" title="Possible duplicate">
                     You already saved <strong>{duplicate.name}</strong>. Submit again to save it as a
@@ -441,15 +545,15 @@ export function AddPlaceDialog({
                   </Field>
                 </div>
 
-                <Field label="Cuisines" hint="Comma separated — overrides the provider wording.">
-                  <Input name="cuisines" defaultValue={selected.cuisines.join(", ")} />
+                <Field label="Cuisines" hint="One of the strongest signals for taste matching.">
+                  <CuisinePicker value={detailsCuisines} onChange={setDetailsCuisines} disabled={submitting} />
                 </Field>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="City">
+                  <Field label="City" hint="Helps with nearby suggestions.">
                     <Input name="city" defaultValue={selected.city ?? ""} />
                   </Field>
-                  <Field label="Area">
+                  <Field label="Area" hint="Neighbourhood is even better.">
                     <Input name="area" defaultValue={selected.area ?? ""} />
                   </Field>
                 </div>
@@ -458,8 +562,19 @@ export function AddPlaceDialog({
                   <Input name="address" defaultValue={selected.address ?? ""} />
                 </Field>
 
+                <Field
+                  label="Google Maps link"
+                  hint="Optional. Paste a place link to preserve the exact listing."
+                >
+                  <Input
+                    name="googleMapsUrl"
+                    type="url"
+                    placeholder="https://www.google.com/maps/place/..."
+                  />
+                </Field>
+
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Expected spend from" hint="€ per person">
+                  <Field label="Expected spend from" hint="€ per person — for budget matching">
                     <Input
                       name="expectedSpendMin"
                       inputMode="decimal"
@@ -477,7 +592,10 @@ export function AddPlaceDialog({
                   </Field>
                 </div>
 
-                <Field label="Personal tags" hint="Comma separated, e.g. date night, work lunch">
+                <Field
+                  label="Personal tags"
+                  hint="Comma separated, e.g. date night or work lunch — useful when filtering."
+                >
                   <Input name="tags" placeholder="date night, book ahead" />
                 </Field>
 
@@ -519,6 +637,10 @@ export function AddPlaceDialog({
                   </Alert>
                 ) : null}
                 {submitError ? <Alert variant="error">{submitError}</Alert> : null}
+                <Alert variant="info" title="Give this place useful signals">
+                  Add its cuisine, neighbourhood and expected spend now. When you visit, record
+                  your rating and a dish or two so recommendations can learn from it.
+                </Alert>
 
                 <Field label="Name">
                   <Input name="name" required placeholder="e.g. Yiayia's Kitchen" autoFocus />
@@ -543,25 +665,38 @@ export function AddPlaceDialog({
                     </Select>
                   </Field>
                 </div>
-                <Field label="Area">
+                <Field label="Area" hint="A neighbourhood helps with nearby suggestions.">
                   <Input name="area" placeholder="e.g. Strovolos" />
                 </Field>
                 <Field label="Address">
                   <Input name="address" placeholder="Street, number" />
                 </Field>
-                <Field label="Cuisines">
-                  <Input name="cuisines" placeholder="Cypriot, Grill" />
+                <Field
+                  label="Google Maps link"
+                  hint="Optional. A full place URL can add its map coordinates automatically."
+                >
+                  <Input
+                    name="googleMapsUrl"
+                    type="url"
+                    placeholder="https://www.google.com/maps/place/..."
+                  />
+                </Field>
+                <Field label="Cuisines" hint="Use the shared catalogue for consistent taste matching.">
+                  <CuisinePicker value={manualCuisines} onChange={setManualCuisines} disabled={submitting} />
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Expected spend from" hint="€ per person">
+                  <Field label="Expected spend from" hint="€ per person — for budget matching">
                     <Input name="expectedSpendMin" inputMode="decimal" />
                   </Field>
                   <Field label="Expected spend to" hint="€ per person">
                     <Input name="expectedSpendMax" inputMode="decimal" />
                   </Field>
                 </div>
-                <Field label="Personal tags">
+                <Field label="Personal tags" hint="e.g. date night, work lunch">
                   <Input name="tags" placeholder="takeaway, cheap" />
+                </Field>
+                <Field label="Why I saved it" hint="A useful reminder before you have visited.">
+                  <Input name="savedReason" placeholder="A friend recommended the gyoza" />
                 </Field>
                 <Field label="Note">
                   <Textarea name="note" rows={2} />

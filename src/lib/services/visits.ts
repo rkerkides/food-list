@@ -1,4 +1,4 @@
-import type { Repositories } from "@/lib/data/repositories";
+import { createRepositories, type Repositories } from "@/lib/data/repositories";
 import type { VisitInput } from "@/lib/domain/schemas";
 import type { FoodItem, Visit, VisitWithItems } from "@/lib/domain/types";
 import { newId } from "@/lib/utils/ids";
@@ -51,9 +51,10 @@ export async function logVisit(
       createdAt: now,
     }));
 
-  await repo.db.transaction(async () => {
-    await repo.visits.insert(visit);
-    if (items.length > 0) await repo.foodItems.insertMany(items);
+  await repo.db.transaction(async (tx) => {
+    const txRepo = createRepositories(tx);
+    await txRepo.visits.insert(visit);
+    if (items.length > 0) await txRepo.foodItems.insertMany(items);
   });
 
   return { ...visit, items };
@@ -97,10 +98,11 @@ export async function updateVisit(
       createdAt: now,
     }));
 
-  await repo.db.transaction(async () => {
-    await repo.visits.update(userId, visitId, visit);
-    await repo.foodItems.deleteByVisit(userId, visitId);
-    if (items.length > 0) await repo.foodItems.insertMany(items);
+  await repo.db.transaction(async (tx) => {
+    const txRepo = createRepositories(tx);
+    await txRepo.visits.update(userId, visitId, visit);
+    await txRepo.foodItems.deleteByVisit(userId, visitId);
+    if (items.length > 0) await txRepo.foodItems.insertMany(items);
   });
 
   return { ...existing, ...visit, items } as VisitWithItems;
@@ -112,9 +114,10 @@ export async function deleteVisit(
   repos?: Repositories,
 ): Promise<void> {
   const repo = repos ?? (await defaultRepositories());
-  await repo.db.transaction(async () => {
-    await repo.foodItems.deleteByVisit(userId, visitId);
-    await repo.visits.delete(userId, visitId);
+  await repo.db.transaction(async (tx) => {
+    const txRepo = createRepositories(tx);
+    await txRepo.foodItems.deleteByVisit(userId, visitId);
+    await txRepo.visits.delete(userId, visitId);
   });
 }
 

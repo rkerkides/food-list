@@ -316,7 +316,7 @@ function buildReasons({
   const personalRating = place.stats.personalRating;
 
   if (distanceKm !== null) {
-    const origin = query.area ?? place.area ?? place.city ?? "you";
+    const origin = query.originLabel ?? query.area ?? place.area ?? place.city ?? "you";
     reasons.push({
       label: `${formatDistanceKm(distanceKm)} from ${origin}`,
       sentiment: distanceScore >= 0.7 ? "positive" : "neutral",
@@ -383,7 +383,7 @@ function buildReasons({
   }
 
   if (visits.length === 0) {
-    const wait = Math.round(daysBetween(new Date(place.savedAt), now) / 30);
+    const wait = Math.floor(daysBetween(new Date(place.savedAt), now) / 30);
     reasons.push({
       label:
         wait >= 1

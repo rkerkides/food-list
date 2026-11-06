@@ -102,6 +102,16 @@ export function distanceFromArea(
   return distanceKm(origin, { latitude: place.latitude, longitude: place.longitude });
 }
 
+/** Distance from an explicit point, falling back to a named Cyprus area. */
+export function distanceFromOrigin(
+  place: Pick<Place, "latitude" | "longitude" | "area" | "city">,
+  options: { origin?: Coordinates | null; originArea?: string | null } = {},
+): number | null {
+  const origin = options.origin ?? resolveAreaCoordinates(options.originArea ?? place.area ?? place.city ?? null);
+  if (!origin || !hasCoordinates(place)) return null;
+  return distanceKm(origin, { latitude: place.latitude, longitude: place.longitude });
+}
+
 /**
  * The area a place belongs to, biased to the finer-grained "area" when present.
  * Used for grouping, filtering and light personalisation.

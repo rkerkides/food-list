@@ -1,24 +1,30 @@
 import { DemoPlaceProvider } from "./demo-provider";
 import { GooglePlacesProvider } from "./google-provider";
+import { OsmPlaceProvider } from "./osm-provider";
 import { PlaceProviderError, type PlaceProvider, type ProviderInfo } from "./types";
 
 export * from "./types";
 export { DemoPlaceProvider } from "./demo-provider";
 export { GooglePlacesProvider } from "./google-provider";
+export { OsmPlaceProvider } from "./osm-provider";
 export { DEMO_PLACES } from "./demo-data";
 
-export function resolveProviderId(): "google" | "demo" {
+export type SearchProviderId = "osm" | "google" | "demo";
+
+export function resolveProviderId(): SearchProviderId {
   const configured = (process.env.PLACES_PROVIDER ?? "auto").trim().toLowerCase();
   if (configured === "google") return "google";
   if (configured === "demo") return "demo";
-  return process.env.GOOGLE_PLACES_API_KEY ? "google" : "demo";
+  if (configured === "osm") return "osm";
+  return process.env.GOOGLE_PLACES_API_KEY ? "google" : "osm";
 }
 
-export function getPlaceProvider(id?: "google" | "demo"): PlaceProvider {
+export function getPlaceProvider(id?: SearchProviderId): PlaceProvider {
   const resolved = id ?? resolveProviderId();
   if (resolved === "google") {
     return new GooglePlacesProvider(process.env.GOOGLE_PLACES_API_KEY);
   }
+  if (resolved === "osm") return new OsmPlaceProvider();
   return new DemoPlaceProvider();
 }
 
@@ -33,8 +39,8 @@ export function describeProvider(provider: PlaceProvider = getPlaceProvider()): 
 }
 
 /**
- * Search with graceful degradation: if the live provider fails we fall back to
- * the bundled dataset and tell the UI why, instead of showing an error screen.
+ * Search with graceful degradation: if the configured real-data provider is
+ * unavailable we fall back to the bundled dataset and tell the UI why.
  */
 export async function searchPlaces(
   query: Parameters<PlaceProvider["search"]>[0],
@@ -61,7 +67,7 @@ export async function searchPlaces(
 }
 
 export async function getPlaceDetails(
-  providerId: "google" | "demo",
+  providerId: SearchProviderId,
   providerPlaceId: string,
 ): Promise<{ result: Awaited<ReturnType<PlaceProvider["getDetails"]>>; provider: ProviderInfo }> {
   const provider = getPlaceProvider(providerId);

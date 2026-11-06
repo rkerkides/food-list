@@ -552,6 +552,7 @@ function buildPlace(
     publicRating: result.publicRating,
     publicRatingCount: result.publicRatingCount,
     priceLevel: result.priceLevel,
+    googleMapsUrl: null,
     website: result.website,
     phone: result.phone,
     openingHours: result.openingHours ?? parseWeekSpec("Mo-Su 09:00-23:00"),

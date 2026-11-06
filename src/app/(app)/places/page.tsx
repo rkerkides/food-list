@@ -7,11 +7,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 import { deriveFilterOptions, filterPreparedPlaces, sortPreparedPlaces } from "@/lib/domain/filters";
+import { toMapPoints } from "@/lib/domain/map-points";
 import { parsePlaceListQuery, type RawSearchParams } from "@/lib/domain/place-query";
 import { scoreCandidate } from "@/lib/domain/scoring";
 import { loadUserLibrary } from "@/lib/services/library";
 import { describeProvider } from "@/lib/places";
-import { formatBudgetRange } from "@/lib/utils/format";
 import { Search } from "lucide-react";
 import Link from "next/link";
 
@@ -80,9 +80,6 @@ export default async function PlacesPage({
             {query.city ? ` · filtered to ${query.city}` : ""}
           </p>
         </div>
-        <div className="lg:hidden">
-          <AddPlaceDialogButton label="Add place" provider={provider} />
-        </div>
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -112,22 +109,7 @@ export default async function PlacesPage({
             />
           ) : query.view === "map" ? (
             <MapCanvas
-              points={sorted.map((prepared) => ({
-                id: prepared.place.id,
-                name: prepared.place.name,
-                category: prepared.place.category,
-                latitude: prepared.place.latitude as number,
-                longitude: prepared.place.longitude as number,
-                area: prepared.place.area,
-                city: prepared.place.city,
-                publicRating: prepared.place.publicRating,
-                personalRating: prepared.place.stats.personalRating,
-                budgetText: formatBudgetRange(prepared.budget.min, prepared.budget.max, {
-                  approximate: prepared.budget.approximate,
-                }),
-                distanceKm: prepared.distanceKm,
-                status: prepared.place.status,
-              }))}
+              points={toMapPoints(sorted)}
               className="mt-1"
             />
           ) : (

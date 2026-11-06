@@ -33,8 +33,28 @@ const optionalNumber = (min?: number, max?: number) =>
     .nullable()
     .optional();
 
+const optionalInteger = (min?: number, max?: number) =>
+  optionalNumber(min, max).refine((value) => value === null || Number.isInteger(value), {
+    message: "Must be a whole number",
+  });
+
+export const placeStatusSchema = z.enum(PLACE_STATUSES);
+
+export const SPEND_RANGE_MESSAGE = "Minimum can't exceed maximum";
+
+/** Shared rule for every place schema: when both spends are set, the minimum may not exceed the maximum. */
+const spendRange = (
+  value: { expectedSpendMin?: number | null; expectedSpendMax?: number | null },
+  ctx: z.RefinementCtx,
+) => {
+  const { expectedSpendMin: min, expectedSpendMax: max } = value;
+  if (min != null && max != null && min > max) {
+    ctx.addIssue({ code: "custom", path: ["expectedSpendMax"], message: SPEND_RANGE_MESSAGE });
+  }
+};
+
 export const placeSearchResultSchema = z.object({
-  provider: z.enum(["demo", "google", "manual"]),
+  provider: z.enum(["osm", "demo", "google", "manual"]),
   providerPlaceId: z.string().min(1),
   name: z.string().min(1),
   category: z.enum(PLACE_CATEGORIES),
@@ -61,6 +81,7 @@ export const addPlaceSchema = z.object({
   city: optionalString,
   area: optionalString,
   address: optionalString,
+  googleMapsUrl: z.string().url("Paste a valid Google Maps URL").nullable().optional(),
   website: optionalString,
   phone: optionalString,
   expectedSpendMin: optionalNumber(0, 2000),
@@ -73,7 +94,7 @@ export const addPlaceSchema = z.object({
   category: z.enum(PLACE_CATEGORIES).optional(),
   /** Set when the user has been warned about a likely duplicate and confirmed. */
   force: z.boolean().optional(),
-});
+}).superRefine(spendRange);
 
 export const manualPlaceSchema = z.object({
   name: z.string().trim().min(2, "Give the place a name"),
@@ -85,6 +106,7 @@ export const manualPlaceSchema = z.object({
   district: optionalString,
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
+  googleMapsUrl: z.string().url("Paste a valid Google Maps URL").nullable().optional(),
   website: optionalString,
   phone: optionalString,
   expectedSpendMin: optionalNumber(0, 2000),
@@ -94,7 +116,64 @@ export const manualPlaceSchema = z.object({
   savedReason: optionalString,
   status: z.enum(PLACE_STATUSES).optional(),
   force: z.boolean().optional(),
+}).superRefine(spendRange);
+
+export const venueLinkSubmissionSchema = z.object({
+  googleMapsUrl: z
+    .string()
+    .url("Paste a valid Google Maps URL")
+    .refine((value) => {
+      const host = new URL(value).hostname.toLowerCase();
+      return host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith(".google.com") || host === "google.com";
+    }, "Paste a Google Maps place link"),
+  note: optionalString.pipe(z.string().max(1000).nullable().optional()),
 });
+
+export const VENUE_NAME_MESSAGE = "Add the venue name before completing the review.";
+export const VENUE_TYPE_MESSAGE = "Choose a valid venue type.";
+export const VENUE_BUDGET_MESSAGE = "Enter a valid per-person budget.";
+
+/** Trimmed text with a length cap; blank becomes null. */
+const nullableText = (max: number, label: string) =>
+  z
+    .string({ error: `Enter a valid ${label}.` })
+    .trim()
+    .max(max, `Keep the ${label} to ${max} characters or fewer.`)
+    .transform((value) => (value.length === 0 ? null : value))
+    .nullable();
+
+/** Reviewer note on a venue-link submission (status change or completed review). */
+export const reviewNoteSchema = nullableText(1000, "review note");
+
+/** Numbers only (no string coercion), then the shared 0–2000 bounds. */
+const venueBudget = z
+  .unknown()
+  .refine((value): boolean => value == null || typeof value === "number", VENUE_BUDGET_MESSAGE)
+  .pipe(optionalNumber(0, 2000));
+
+/** Details a reviewer confirms when completing a venue-link review. */
+export const venueReviewSchema = z.object({
+  name: z
+    .string({ error: VENUE_NAME_MESSAGE })
+    .trim()
+    .min(2, VENUE_NAME_MESSAGE)
+    .max(120, "Keep the venue name to 120 characters or fewer."),
+  category: z.enum(PLACE_CATEGORIES, { error: VENUE_TYPE_MESSAGE }).nullable(),
+  cuisines: z
+    .array(
+      z
+        .string({ error: "Choose valid cuisines." })
+        .trim()
+        .min(1, "Remove the empty cuisine.")
+        .max(50, "Keep each cuisine to 50 characters or fewer."),
+      { error: "Choose valid cuisines." },
+    )
+    .max(12, "Choose up to 12 cuisines."),
+  address: nullableText(200, "address"),
+  area: nullableText(100, "area"),
+  expectedSpendMin: venueBudget,
+  expectedSpendMax: venueBudget,
+}).superRefine(spendRange);
 
 export const updatePlaceSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -103,6 +182,11 @@ export const updatePlaceSchema = z.object({
   city: z.string().nullable().optional(),
   area: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
+  latitude: optionalNumber(-90, 90),
+  longitude: optionalNumber(-180, 180),
+  publicRating: optionalNumber(0, 5),
+  publicRatingCount: optionalInteger(0, 10_000_000),
+  googleMapsUrl: z.string().url("Paste a valid Google Maps URL").nullable().optional(),
   website: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   expectedSpendMin: optionalNumber(0, 2000),
@@ -111,7 +195,7 @@ export const updatePlaceSchema = z.object({
   note: z.string().nullable().optional(),
   savedReason: z.string().nullable().optional(),
   status: z.enum(PLACE_STATUSES).optional(),
-});
+}).superRefine(spendRange);
 
 export const foodItemSchema = z.object({
   name: z.string().trim().min(1, "Name the dish"),
@@ -137,6 +221,9 @@ export const visitSchema = z.object({
 
 export const decideSchema = z.object({
   area: z.string().nullable().optional(),
+  originLatitude: optionalNumber(-90, 90),
+  originLongitude: optionalNumber(-180, 180),
+  originLabel: optionalString,
   city: z.string().nullable().optional(),
   maxDistanceKm: z.number().min(0.5).max(200).nullable().optional(),
   cuisines: z.array(z.string()).optional(),
@@ -163,6 +250,7 @@ export const credentialsSchema = z.object({
 
 export type AddPlaceInput = z.infer<typeof addPlaceSchema>;
 export type ManualPlaceInput = z.infer<typeof manualPlaceSchema>;
+export type VenueLinkSubmissionInput = z.infer<typeof venueLinkSubmissionSchema>;
 export type UpdatePlaceInput = z.infer<typeof updatePlaceSchema>;
 export type VisitInput = z.infer<typeof visitSchema>;
 export type DecideInput = z.infer<typeof decideSchema>;

@@ -19,10 +19,10 @@ export function Section({
   id?: string;
 }) {
   return (
-    <section id={id} className={cn("flex flex-col gap-3", className)}>
+    <section id={id} className={cn("flex flex-col gap-4", className)}>
       <div className="flex items-end justify-between gap-4">
         <div className="space-y-0.5">
-          <h2 className="text-xl font-semibold sm:text-2xl">{title}</h2>
+          <h2 className="font-display text-xl font-semibold sm:text-2xl">{title}</h2>
           {subtitle ? <p className="text-sm text-ink-muted text-pretty">{subtitle}</p> : null}
         </div>
         {action ? (

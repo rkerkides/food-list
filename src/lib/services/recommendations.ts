@@ -40,10 +40,15 @@ export async function recommend(
 ): Promise<DecideOutcome> {
   const now = options.now ?? new Date();
   const originArea = input.area ?? input.city ?? null;
+  const originCoordinates =
+    input.originLatitude != null && input.originLongitude != null
+      ? { latitude: input.originLatitude, longitude: input.originLongitude }
+      : null;
   const library =
     options.library ??
     (await loadUserLibrary(userId, {
       originArea,
+      originCoordinates,
       now,
       repos: options.repos,
     }));
@@ -113,7 +118,7 @@ export async function recommend(
         ? "Nothing in your list fits all of those constraints. Try widening the distance or budget."
         : null,
     libraryEmpty: false,
-    areaResolved: Boolean(resolveAreaCoordinates(originArea)),
+    areaResolved: Boolean(originCoordinates ?? resolveAreaCoordinates(originArea)),
   };
 }
 

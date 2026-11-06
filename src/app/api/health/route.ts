@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { databaseDriver, ensureMigrations, getDb } from "@/lib/db";
 import { describeProvider } from "@/lib/places";
+import { getOsmCatalogStatus } from "@/lib/places/osm-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,13 @@ export async function GET() {
   }
 
   const provider = describeProvider();
+  const osmCatalog =
+    provider.id === "osm"
+      ? await getOsmCatalogStatus().catch(() => ({ count: 0, syncedAt: null, source: null }))
+      : null;
+  if (provider.id === "osm" && osmCatalog?.count === 0) {
+    problems.push("places: OpenStreetMap catalog is empty; run npm run places:sync");
+  }
 
   return NextResponse.json(
     {
@@ -34,6 +42,8 @@ export async function GET() {
         provider: provider.id,
         mode: provider.mode,
         configured: provider.configured,
+        catalogCount: osmCatalog?.count ?? null,
+        catalogSyncedAt: osmCatalog?.syncedAt ?? null,
       },
       sessionSecretConfigured: Boolean(process.env.SESSION_SECRET?.trim()),
       problems,

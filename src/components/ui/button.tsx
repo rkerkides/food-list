@@ -4,14 +4,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-clay-400 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 active:scale-[0.98]",
   {
     variants: {
       variant: {
         primary:
-          "bg-clay-600 text-white shadow-[0_10px_24px_-14px_var(--color-clay-700)] hover:bg-clay-700",
+          "bg-clay-600 text-white shadow-[0_12px_26px_-15px_var(--color-clay-800)] hover:-translate-y-px hover:bg-clay-700",
         secondary: "bg-ink text-canvas hover:bg-ink-soft",
-        outline: "border border-line-strong bg-surface text-ink hover:bg-surface-muted",
+        outline: "border border-line-strong bg-surface text-ink shadow-sm hover:-translate-y-px hover:bg-surface-muted",
         ghost: "text-ink-soft hover:bg-surface-muted hover:text-ink",
         subtle: "bg-clay-50 text-clay-800 hover:bg-clay-100",
         olive: "bg-olive-700 text-white hover:bg-olive-800",

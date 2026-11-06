@@ -42,8 +42,8 @@ export class PlaceProviderError extends Error {
 export interface PlaceProvider {
   readonly id: PlaceProviderId;
   readonly label: string;
-  /** "live" hits a real API, "demo" serves the bundled Cyprus dataset. */
-  readonly mode: "live" | "demo";
+  /** "local" searches imported real data without making a request. */
+  readonly mode: "live" | "local" | "demo";
   readonly configured: boolean;
   search(query: PlaceSearchQuery): Promise<PlaceSearchResult[]>;
   getDetails(providerPlaceId: string): Promise<PlaceSearchResult | null>;
@@ -52,7 +52,7 @@ export interface PlaceProvider {
 export interface ProviderInfo {
   id: PlaceProviderId;
   label: string;
-  mode: "live" | "demo";
+  mode: "live" | "local" | "demo";
   configured: boolean;
   /** Set when the requested provider was unavailable and we degraded. */
   fallbackReason?: string | null;

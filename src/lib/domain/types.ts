@@ -3,7 +3,8 @@
  *
  * These are deliberately independent from both the database representation and
  * from any external place provider so that storage (SQLite/Postgres) and the
- * provider (Google Places / demo seed) can be swapped without touching UI code.
+ * provider (OpenStreetMap / Google Places / demo seed) can be swapped without
+ * touching UI code.
  */
 
 export const PLACE_CATEGORIES = [
@@ -86,7 +87,25 @@ export interface DayHours {
 }
 export type OpeningHours = DayHours[][];
 
-export type PlaceProviderId = "demo" | "google" | "manual";
+export type PlaceProviderId = "osm" | "demo" | "google" | "manual";
+
+export const VENUE_LINK_SUBMISSION_STATUSES = ["pending", "in_review", "completed", "declined"] as const;
+export type VenueLinkSubmissionStatus = (typeof VENUE_LINK_SUBMISSION_STATUSES)[number];
+
+export interface VenueLinkSubmission {
+  id: string;
+  userId: string;
+  submitterName: string;
+  googleMapsUrl: string;
+  note: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  status: VenueLinkSubmissionStatus;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
 
 export interface Place {
   id: string;
@@ -106,6 +125,8 @@ export interface Place {
   publicRating: number | null;
   publicRatingCount: number | null;
   priceLevel: number | null;
+  /** A user-supplied Google Maps place URL, preferred over the generated search link. */
+  googleMapsUrl: string | null;
   website: string | null;
   phone: string | null;
   openingHours: OpeningHours | null;
@@ -287,6 +308,10 @@ export interface ScoreResult {
 
 export interface DecideQuery {
   area?: string | null;
+  /** A browser/device or address-derived point used for distance ranking. */
+  originLatitude?: number | null;
+  originLongitude?: number | null;
+  originLabel?: string | null;
   city?: string | null;
   maxDistanceKm?: number | null;
   cuisines?: string[];
