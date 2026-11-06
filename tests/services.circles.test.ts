@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { createManualPlace } from "@/lib/services/places";
-import { addCircleMember, createSharedCircle, listSharedCircles } from "@/lib/services/circles";
+import {
+  addCircleMember,
+  createSharedCircle,
+  deleteSharedCircle,
+  listSharedCircles,
+  removeCircleMember,
+} from "@/lib/services/circles";
 import { loadUserLibrary } from "@/lib/services/library";
+import {
+  canEditSharedContent,
+  isSharedContentEditableByGroup,
+  setSharedContentEditableByGroup,
+} from "@/lib/services/sharing";
 import { logVisit } from "@/lib/services/visits";
 import { createSecondUser, createTestContext } from "./helpers";
 
@@ -37,5 +48,39 @@ describe("shared circles", () => {
 
     const circles = await listSharedCircles(ctx.userId, ctx.repos);
     expect(circles).toMatchObject([{ name: "Dinner crew", memberCount: 2 }]);
+  });
+
+  it("uses one owner setting for editing shared content across all circles", async () => {
+    const ctx = await createTestContext();
+    const friendId = await createSecondUser(ctx.repos, "friend@example.com");
+    const circleId = await createSharedCircle(ctx.userId, "Dinner crew", ctx.repos);
+    await addCircleMember(ctx.userId, circleId, "friend@example.com", ctx.repos);
+
+    expect(await isSharedContentEditableByGroup(ctx.userId, ctx.repos)).toBe(false);
+    expect(await canEditSharedContent(friendId, ctx.userId, ctx.repos)).toBe(false);
+    expect(await canEditSharedContent(ctx.userId, ctx.userId, ctx.repos)).toBe(true);
+
+    await setSharedContentEditableByGroup(ctx.userId, true, ctx.repos);
+
+    expect(await isSharedContentEditableByGroup(ctx.userId, ctx.repos)).toBe(true);
+    expect(await canEditSharedContent(friendId, ctx.userId, ctx.repos)).toBe(true);
+  });
+
+  it("lists members and lets only the owner remove members or delete a circle", async () => {
+    const ctx = await createTestContext();
+    const friendId = await createSecondUser(ctx.repos, "friend@example.com");
+    const circleId = await createSharedCircle(ctx.userId, "Dinner crew", ctx.repos);
+    await addCircleMember(ctx.userId, circleId, "friend@example.com", ctx.repos);
+
+    const [circle] = await listSharedCircles(ctx.userId, ctx.repos);
+    expect(circle.members).toEqual(expect.arrayContaining([
+      expect.objectContaining({ userId: ctx.userId, isOwner: true }),
+      expect.objectContaining({ userId: friendId, email: "friend@example.com", isOwner: false }),
+    ]));
+    expect((await removeCircleMember(friendId, circleId, ctx.userId, ctx.repos)).status).toBe("forbidden");
+    expect((await removeCircleMember(ctx.userId, circleId, friendId, ctx.repos)).status).toBe("removed");
+    expect((await listSharedCircles(ctx.userId, ctx.repos))[0].memberCount).toBe(1);
+    expect((await deleteSharedCircle(ctx.userId, circleId, ctx.repos)).status).toBe("deleted");
+    expect(await listSharedCircles(ctx.userId, ctx.repos)).toEqual([]);
   });
 });

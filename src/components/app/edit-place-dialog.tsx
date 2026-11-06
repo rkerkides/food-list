@@ -24,10 +24,10 @@ import { cn } from "@/lib/utils/cn";
 import { ImageIcon, Loader2, Pencil, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { updatePlaceAction } from "@/app/actions/places";
+import { enqueueLinkedVenueForReviewAction, updatePlaceAction } from "@/app/actions/places";
 import { CuisinePicker } from "./cuisine-picker";
 
-export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
+export function EditPlaceDialog({ place, canAddToReviewQueue = false }: { place: PlaceWithStats; canAddToReviewQueue?: boolean }) {
   const router = useRouter();
   const originalImageMode = imageModeForRef(place.photoRef);
   const originalStockImage = placeStockImageFromRef(place.photoRef);
@@ -104,6 +104,17 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
     } finally {
       setPending(false);
     }
+  }
+
+  async function addToReviewQueue() {
+    setPending(true);
+    setError(null);
+    const result = await enqueueLinkedVenueForReviewAction(place.id);
+    setPending(false);
+    if (!result.ok) { setError(result.error); return; }
+    setOpen(false);
+    router.push("/profile/review-queue");
+    router.refresh();
   }
 
   function imageSelectionChanged(): boolean {
@@ -338,6 +349,11 @@ export function EditPlaceDialog({ place }: { place: PlaceWithStats }) {
             </Field>
           </DialogBody>
           <DialogFooter>
+            {canAddToReviewQueue ? (
+              <Button type="button" variant="outline" onClick={addToReviewQueue} disabled={pending}>
+                Add to review queue
+              </Button>
+            ) : null}
             <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>

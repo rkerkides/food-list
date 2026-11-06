@@ -160,9 +160,13 @@ export function OrderSuggestions({
 export function VisitTimeline({
   visits,
   place,
+  canEdit = true,
+  canDelete = true,
 }: {
   visits: VisitWithItems[];
   place: PlaceWithStats;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   if (visits.length === 0) {
     return (
@@ -178,7 +182,7 @@ export function VisitTimeline({
               : "Log your first visit to start building a history here."}
           </p>
         </div>
-        <LogVisitDialog placeId={place.id} placeName={place.name} />
+        {canEdit ? <LogVisitDialog placeId={place.id} placeName={place.name} /> : null}
       </Card>
     );
   }
@@ -263,7 +267,7 @@ export function VisitTimeline({
             >
               Visit {visits.indexOf(visit) + 1} of {visits.length}
             </Link>
-            <div className="flex items-center gap-1">
+            {canEdit ? <div className="flex items-center gap-1">
               <LogVisitDialog
                 placeId={place.id}
                 placeName={place.name}
@@ -278,8 +282,9 @@ export function VisitTimeline({
                   </button>
                 }
               />
-              <DeleteVisitButton visitId={visit.id} placeId={place.id} />
+              {canDelete ? <DeleteVisitButton visitId={visit.id} placeId={place.id} /> : null}
             </div>
+            : null}
           </div>
         </Card>
       ))}

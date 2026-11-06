@@ -7,6 +7,14 @@ export interface SharedCircleSummary {
   ownerUserId: string;
   ownerName: string;
   memberCount: number;
+  members: SharedCircleMember[];
+}
+
+export interface SharedCircleMember {
+  userId: string;
+  name: string;
+  email: string;
+  isOwner: boolean;
 }
 
 export async function listSharedCircles(
@@ -15,13 +23,19 @@ export async function listSharedCircles(
 ): Promise<SharedCircleSummary[]> {
   const repo = repos ?? (await defaultRepositories());
   const rows = await repo.circles.listForUser(userId);
-  return rows.map((row) => ({
+  return Promise.all(rows.map(async (row) => ({
     id: row.id,
     name: row.name,
     ownerUserId: row.owner_user_id,
     ownerName: row.owner_name,
     memberCount: Number(row.member_count),
-  }));
+    members: (await repo.circles.listMembers(row.id, userId)).map((member) => ({
+      userId: member.user_id,
+      name: member.name,
+      email: member.email,
+      isOwner: member.role === "owner",
+    })),
+  })));
 }
 
 export async function createSharedCircle(userId: string, name: string, repos?: Repositories) {
@@ -41,4 +55,19 @@ export async function addCircleMember(
   if (!/^\S+@\S+\.\S+$/.test(trimmed)) throw new Error("Enter a valid email address.");
   const repo = repos ?? (await defaultRepositories());
   return repo.circles.addMemberByEmail(circleId, userId, trimmed);
+}
+
+export async function removeCircleMember(
+  userId: string,
+  circleId: string,
+  memberUserId: string,
+  repos?: Repositories,
+) {
+  const repo = repos ?? (await defaultRepositories());
+  return repo.circles.removeMember(circleId, userId, memberUserId);
+}
+
+export async function deleteSharedCircle(userId: string, circleId: string, repos?: Repositories) {
+  const repo = repos ?? (await defaultRepositories());
+  return repo.circles.delete(circleId, userId);
 }

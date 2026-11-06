@@ -33,6 +33,17 @@ export function createRepositories(db: SqlClient = getDb()) {
     async findById(id: string) {
       return db.get<UserRow>("select * from users where id = ?", [id]);
     },
+    async findByIdForUpdate(id: string) {
+      return db.get<UserRow>(
+        `select * from users where id = ?${db.dialect === "postgres" ? " for update" : ""}`,
+        [id],
+      );
+    },
+    async listPersonalAccounts() {
+      return db.all<Pick<UserRow, "id" | "name" | "email" | "created_at" | "is_admin">>(
+        "select id, name, email, created_at, is_admin from users where is_demo = 0 order by created_at, id",
+      );
+    },
     async create(input: {
       email: string;
       name: string;
@@ -49,6 +60,9 @@ export function createRepositories(db: SqlClient = getDb()) {
     },
     async updatePassword(id: string, passwordHash: string) {
       await db.run("update users set password_hash = ? where id = ?", [passwordHash, id]);
+    },
+    async setSharedContentEditableByGroup(id: string, enabled: boolean) {
+      await db.run("update users set shared_content_editable_by_group = ? where id = ?", [enabled ? 1 : 0, id]);
     },
     async delete(id: string) {
       await db.run("delete from users where id = ?", [id]);
@@ -86,6 +100,9 @@ export function createRepositories(db: SqlClient = getDb()) {
     },
     async deleteByTokenHash(tokenHash: string) {
       await db.run("delete from sessions where token_hash = ?", [tokenHash]);
+    },
+    async deleteByUserId(userId: string) {
+      await db.run("delete from sessions where user_id = ?", [userId]);
     },
     async deleteExpired() {
       await db.run("delete from sessions where expires_at <= ?", [new Date().toISOString()]);
@@ -378,6 +395,46 @@ export function createRepositories(db: SqlClient = getDb()) {
       );
       return { status: "added" as const, userId: user.id };
     },
+    async listMembers(circleId: string, actorUserId: string) {
+      return db.all<{
+        user_id: string;
+        name: string;
+        email: string;
+        role: string;
+      }>(
+        `select members.user_id, users.name, users.email, members.role
+         from shared_circle_members members
+         join shared_circle_members mine on mine.circle_id = members.circle_id and mine.user_id = ?
+         join users on users.id = members.user_id
+         where members.circle_id = ?
+         order by case members.role when 'owner' then 0 else 1 end, users.name asc`,
+        [actorUserId, circleId],
+      );
+    },
+    async removeMember(circleId: string, actorUserId: string, memberUserId: string) {
+      const circle = await db.get<{ owner_user_id: string }>(
+        "select owner_user_id from shared_circles where id = ?",
+        [circleId],
+      );
+      if (!circle) return { status: "not_found" as const };
+      if (circle.owner_user_id !== actorUserId) return { status: "forbidden" as const };
+      if (circle.owner_user_id === memberUserId) return { status: "owner" as const };
+      await db.run(
+        "delete from shared_circle_members where circle_id = ? and user_id = ?",
+        [circleId, memberUserId],
+      );
+      return { status: "removed" as const };
+    },
+    async delete(circleId: string, actorUserId: string) {
+      const circle = await db.get<{ owner_user_id: string }>(
+        "select owner_user_id from shared_circles where id = ?",
+        [circleId],
+      );
+      if (!circle) return { status: "not_found" as const };
+      if (circle.owner_user_id !== actorUserId) return { status: "forbidden" as const };
+      await db.run("delete from shared_circles where id = ?", [circleId]);
+      return { status: "deleted" as const };
+    },
     async accessibleUserIds(userId: string): Promise<string[]> {
       const rows = await db.all<{ user_id: string }>(
         `select distinct peers.user_id
@@ -387,6 +444,17 @@ export function createRepositories(db: SqlClient = getDb()) {
         [userId],
       );
       return [...new Set([userId, ...rows.map((row) => row.user_id)])];
+    },
+    async sharesCircle(userId: string, otherUserId: string): Promise<boolean> {
+      const row = await db.get<{ matched: number }>(
+        `select 1 as matched
+         from shared_circle_members mine
+         join shared_circle_members peer on peer.circle_id = mine.circle_id
+         where mine.user_id = ? and peer.user_id = ?
+         limit 1`,
+        [userId, otherUserId],
+      );
+      return Boolean(row);
     },
   };
 
@@ -443,12 +511,49 @@ export function createRepositories(db: SqlClient = getDb()) {
           order by case s.status when 'pending' then 0 when 'in_review' then 1 else 2 end, s.created_at asc`);
       return rows.map((row) => ({ id: row.id, userId: row.user_id, submitterName: row.submitter_name, googleMapsUrl: row.google_maps_url, note: row.note, latitude: row.latitude, longitude: row.longitude, status: row.status as VenueLinkSubmissionStatus, reviewNote: row.review_note, reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at, createdAt: row.created_at }));
     },
+    async listByUserIds(userIds: string[]): Promise<VenueLinkSubmission[]> {
+      if (userIds.length === 0) return [];
+      const placeholders = userIds.map(() => "?").join(", ");
+      const rows = await db.all<{
+        id: string; user_id: string; submitter_name: string; google_maps_url: string; note: string | null;
+        latitude: number | null; longitude: number | null; status: string; review_note: string | null;
+        reviewed_by: string | null; reviewed_at: string | null; created_at: string;
+      }>(`select s.*, u.name as submitter_name from venue_link_submissions s join users u on u.id = s.user_id
+          where s.user_id in (${placeholders})
+          order by case s.status when 'pending' then 0 when 'in_review' then 1 else 2 end, s.created_at asc`, userIds);
+      return rows.map((row) => ({ id: row.id, userId: row.user_id, submitterName: row.submitter_name, googleMapsUrl: row.google_maps_url, note: row.note, latitude: row.latitude, longitude: row.longitude, status: row.status as VenueLinkSubmissionStatus, reviewNote: row.review_note, reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at, createdAt: row.created_at }));
+    },
+    async findById(id: string): Promise<VenueLinkSubmission | null> {
+      const rows = await db.all<{
+        id: string; user_id: string; submitter_name: string; google_maps_url: string; note: string | null;
+        latitude: number | null; longitude: number | null; status: string; review_note: string | null;
+        reviewed_by: string | null; reviewed_at: string | null; created_at: string;
+      }>(`select s.*, u.name as submitter_name from venue_link_submissions s join users u on u.id = s.user_id where s.id = ?`, [id]);
+      const row = rows[0];
+      return row ? { id: row.id, userId: row.user_id, submitterName: row.submitter_name, googleMapsUrl: row.google_maps_url, note: row.note, latitude: row.latitude, longitude: row.longitude, status: row.status as VenueLinkSubmissionStatus, reviewNote: row.review_note, reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at, createdAt: row.created_at } : null;
+    },
     async update(id: string, reviewerId: string, input: { status: VenueLinkSubmissionStatus; reviewNote: string | null }) {
       await db.run("update venue_link_submissions set status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? where id = ?", [input.status, input.reviewNote, reviewerId, new Date().toISOString(), id]);
     },
   };
 
-  return { db, users, sessions, places, cuisines, visits, foodItems, refreshes, circles, venueLinkSubmissions };
+  const adminAudit = {
+    async insert(actorId: string, targetId: string | null, action: "password_reset" | "password_reset_denied" | "admin_granted") {
+      await db.run(
+        "insert into admin_audit_log (id, actor_user_id, target_user_id, action, created_at) values (?, ?, ?, ?, ?)",
+        [newId("audit"), actorId, targetId, action, new Date().toISOString()],
+      );
+    },
+    async recentFailedResets(actorId: string, since: string) {
+      const row = await db.get<{ count: number }>(
+        "select count(*) as count from admin_audit_log where actor_user_id = ? and action = 'password_reset_denied' and created_at >= ?",
+        [actorId, since],
+      );
+      return Number(row?.count ?? 0);
+    },
+  };
+
+  return { db, users, sessions, places, cuisines, visits, foodItems, refreshes, circles, venueLinkSubmissions, adminAudit };
 }
 
 export type Repositories = ReturnType<typeof createRepositories>;

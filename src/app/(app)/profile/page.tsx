@@ -12,6 +12,7 @@ import { loadTasteInsights } from "@/lib/services/insights";
 import { loadUserLibrary } from "@/lib/services/library";
 import { listSharedCircles } from "@/lib/services/circles";
 import { listCuisineCatalog } from "@/lib/services/cuisines";
+import { isSharedContentEditableByGroup } from "@/lib/services/sharing";
 import { describeProvider, resolveProviderId } from "@/lib/places";
 import { formatBudgetRange, formatRating, titleCase } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -22,11 +23,12 @@ export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [insights, library, circles, cuisineCatalog] = await Promise.all([
+  const [insights, library, circles, cuisineCatalog, sharedContentEditableByGroup] = await Promise.all([
     loadTasteInsights(user.id),
     loadUserLibrary(user.id),
     listSharedCircles(user.id),
     listCuisineCatalog(user.id),
+    isSharedContentEditableByGroup(user.id),
   ]);
   const provider = describeProvider();
   const providerId = resolveProviderId();
@@ -153,7 +155,11 @@ export default async function ProfilePage() {
         </div>
       ) : null}
 
-      <SharedCircles circles={circles} currentUserId={user.id} />
+      <SharedCircles
+        circles={circles}
+        currentUserId={user.id}
+        sharedContentEditableByGroup={sharedContentEditableByGroup}
+      />
 
       <Card className="space-y-4 p-5">
         <div>
@@ -202,6 +208,11 @@ export default async function ProfilePage() {
         </dl>
 
         <div className="flex flex-wrap gap-2 border-t border-line pt-4">
+          {user.isAdmin ? (
+            <Button asChild variant="outline">
+              <Link href="/profile/admin">Manage users</Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline">
             <Link href="/profile/data-status">
               <ListChecks className="size-4" />

@@ -188,6 +188,20 @@ See `.env.example` for the full list. The important ones:
 | `PLACES_REGION_CODE` | `CY` | Region bias for place search |
 | `MOCK_PLACES_LATENCY_MS` / `MOCK_PLACES_FAILURE_RATE` | `120` / `0` | Demo-provider simulation |
 
+## Account administration
+
+Accounts are members by default. An account with `users.is_admin = 1` can open
+**Profile → Manage users** to see personal accounts and reset another member's
+password. Demo accounts cannot administer users and are excluded from the list.
+Admin rights are assigned through the database by the server operator; signup
+and the web interface cannot grant them.
+
+Each reset requires the admin's current password and a confirmed new password
+of 8–128 characters. The reset hashes the password, signs the target user out on
+all devices, and records the action in `admin_audit_log` in one transaction.
+Five incorrect admin-password attempts block resets for 15 minutes. Passwords
+and password hashes are never shown in the admin page or audit log.
+
 ## Health check
 
 `GET /api/health` returns `200` with the database driver, provider mode and

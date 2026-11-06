@@ -12,6 +12,7 @@ export interface SessionUser {
   email: string;
   name: string;
   isDemo: boolean;
+  isAdmin: boolean;
   createdAt: string;
 }
 
@@ -61,6 +62,7 @@ export async function getSessionUser(repos?: Repositories): Promise<SessionUser 
     email: found.user.email,
     name: found.user.name,
     isDemo: Number(found.user.is_demo) === 1,
+    isAdmin: Number(found.user.is_admin) === 1 && Number(found.user.is_demo) !== 1,
     createdAt: found.user.created_at,
   };
 }

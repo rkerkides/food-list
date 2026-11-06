@@ -7,6 +7,7 @@ import { PlaceVisual } from "@/components/app/place-visual";
 import { MapCanvas } from "@/components/app/map-canvas";
 import { PlaceActions } from "@/components/app/place-actions";
 import { EditPlaceDialog } from "@/components/app/edit-place-dialog";
+import { VenueReviewContradictions } from "@/components/app/venue-review-contradictions";
 import { LogVisitDialog } from "@/components/app/log-visit-dialog";
 import {
   HighlightsGrid,
@@ -20,6 +21,9 @@ import { CATEGORY_LABELS, STATUS_LABELS, type PlaceWithStats } from "@/lib/domai
 import { DAY_LABELS, formatDayHours, localDayAndMinutes } from "@/lib/domain/opening-hours";
 import { googleMapsDirectionsUrl, googleMapsPlaceUrl } from "@/lib/domain/place-links";
 import { readOsmDetails } from "@/lib/places/osm-details";
+import { canEditSharedContent } from "@/lib/services/sharing";
+import { reviewContradictions } from "@/lib/services/venue-review";
+import { listLinkedVenueReviewCandidates } from "@/lib/services/venue-link-submissions";
 import { formatBudgetRange, formatCount, formatDate, formatRating, relativeTime } from "@/lib/utils/format";
 import {
   ArrowLeft,
@@ -43,11 +47,15 @@ export default async function PlaceDetailPage({
 }) {
   const user = await requireUser();
   const { id } = await params;
-  const data = await loadPlaceDetail(user.id, id);
+  const [data, linkedVenueCandidates] = await Promise.all([
+    loadPlaceDetail(user.id, id),
+    listLinkedVenueReviewCandidates(user.id),
+  ]);
   if (!data) notFound();
 
   const { place, visits, items, budget, isOpenNow, preferenceAverage } = data;
   const isOwner = place.userId === user.id;
+  const canEdit = await canEditSharedContent(user.id, place.userId);
   const visited = visits.length > 0;
   const todayIndex = localDayAndMinutes(new Date(), "Asia/Nicosia").day;
   const lastSpend =
@@ -55,6 +63,8 @@ export default async function PlaceDetailPage({
   const osmDetails = readOsmDetails(place);
   const mapLink = googleMapsPlaceUrl(place);
   const directionsLink = googleMapsDirectionsUrl(place);
+  const contradictions = reviewContradictions(place);
+  const canAddToReviewQueue = linkedVenueCandidates.some((candidate) => candidate.placeId === place.id);
 
   return (
     <div className="space-y-6">
@@ -144,8 +154,11 @@ export default async function PlaceDetailPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {isOwner ? (
+              {canEdit ? (
                 <>
+                  {!isOwner ? (
+                    <Badge variant="outline">Shared by another circle member · editable</Badge>
+                  ) : null}
                   <LogVisitDialog
                     placeId={place.id}
                     placeName={place.name}
@@ -157,7 +170,7 @@ export default async function PlaceDetailPage({
                       </Button>
                     }
                   />
-                  <EditPlaceDialog place={place} />
+                  <EditPlaceDialog place={place} canAddToReviewQueue={canAddToReviewQueue} />
                 </>
               ) : (
                 <Badge variant="outline">Shared by another circle member · read-only</Badge>
@@ -215,12 +228,15 @@ export default async function PlaceDetailPage({
             </div>
           </header>
 
+          <VenueReviewContradictions placeId={place.id} contradictions={contradictions} />
+
           <RecommendationDataPrompt
             place={place}
             hasVisited={visited}
             hasDishes={items.length > 0}
             lastSpend={lastSpend}
-            canEdit={isOwner}
+            canEdit={canEdit}
+            canAddToReviewQueue={canAddToReviewQueue}
           />
 
           <section className="space-y-3">
@@ -242,7 +258,7 @@ export default async function PlaceDetailPage({
                 </span>
               ) : null}
             </div>
-            <VisitTimeline visits={visits} place={place} />
+            <VisitTimeline visits={visits} place={place} canEdit={canEdit} canDelete={isOwner} />
           </section>
         </div>
 
@@ -511,7 +527,7 @@ export default async function PlaceDetailPage({
             <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">
               Manage
             </p>
-            {isOwner ? <PlaceActions place={place} /> : null}
+            {canEdit ? <PlaceActions place={place} canDelete={isOwner} /> : null}
             <p className="text-xs text-ink-muted">
               Source:{" "}
               {place.provider === "google"
@@ -558,12 +574,14 @@ function RecommendationDataPrompt({
   hasDishes,
   lastSpend,
   canEdit,
+  canAddToReviewQueue,
 }: {
   place: PlaceWithStats;
   hasVisited: boolean;
   hasDishes: boolean;
   lastSpend: number | null;
   canEdit: boolean;
+  canAddToReviewQueue: boolean;
 }) {
   const missingVenueSignals = [
     place.cuisines.length === 0 ? "cuisine" : null,
@@ -600,7 +618,7 @@ function RecommendationDataPrompt({
             {hasVisited && !hasDishes ? <li>• Add a rated dish to remember what worked.</li> : null}
           </ul>
           {canEdit ? <div className="flex flex-wrap gap-2 pt-1">
-            {missingVenueSignals.length > 0 ? <EditPlaceDialog place={place} /> : null}
+            {missingVenueSignals.length > 0 ? <EditPlaceDialog place={place} canAddToReviewQueue={canAddToReviewQueue} /> : null}
             {!hasVisited ? (
               <LogVisitDialog
                 placeId={place.id}

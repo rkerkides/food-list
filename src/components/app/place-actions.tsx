@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { deletePlaceAction, refreshPlaceAction, setPlaceStatusAction } from "@/app/actions/places";
 
-export function PlaceActions({ place }: { place: PlaceWithStats }) {
+export function PlaceActions({ place, canDelete = true }: { place: PlaceWithStats; canDelete?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = React.useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export function PlaceActions({ place }: { place: PlaceWithStats }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <RefreshButton placeId={place.id} provider={place.provider} />
-        <DeletePlaceButton placeId={place.id} />
+        {canDelete ? <DeletePlaceButton placeId={place.id} /> : null}
       </div>
 
       <div className="space-y-2">

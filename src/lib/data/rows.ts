@@ -18,6 +18,8 @@ export interface UserRow {
   name: string;
   password_hash: string | null;
   is_demo: number;
+  is_admin: number;
+  shared_content_editable_by_group: number;
   created_at: string;
 }
 
