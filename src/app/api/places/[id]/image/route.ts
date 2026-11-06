@@ -8,6 +8,7 @@ import {
   setUploadedPlaceImage,
   type PlaceImageMimeType,
 } from "@/lib/services/place-images";
+import { resolveEditablePlace } from "@/lib/services/sharing";
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -19,24 +20,34 @@ export async function POST(
   if (!user) return jsonError("Sign in to change this image.", 401);
 
   const { id: placeId } = await context.params;
-  let form: FormData;
   try {
-    form = await request.formData();
-  } catch {
-    return jsonError("The image request was not valid.", 400);
-  }
+    // Shared editors act on the owner's place, so every write below uses the owner's id.
+    const access = await resolveEditablePlace(user.id, placeId);
+    if (access.access === "not_found" || !access.ownerUserId) {
+      return jsonError("That place could not be found.", 404);
+    }
+    if (access.access === "forbidden") {
+      return jsonError("You can't change this shared place's image.", 403);
+    }
+    const ownerUserId = access.ownerUserId;
 
-  const mode = form.get("mode");
-  try {
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      return jsonError("The image request was not valid.", 400);
+    }
+
+    const mode = form.get("mode");
     let updated;
     if (mode === "automatic") {
-      updated = await resetPlaceImage(user.id, placeId);
+      updated = await resetPlaceImage(ownerUserId, placeId);
     } else if (mode === "stock") {
       const key = form.get("stockImage");
       if (typeof key !== "string" || !isPlaceStockImage(key)) {
         return jsonError("Choose one of the available stock images.", 400);
       }
-      updated = await setStockPlaceImage(user.id, placeId, key);
+      updated = await setStockPlaceImage(ownerUserId, placeId, key);
     } else if (mode === "upload") {
       const file = form.get("image");
       if (!(file instanceof File) || file.size === 0) {
@@ -52,7 +63,7 @@ export async function POST(
       if (!matchesImageSignature(file.type, bytes)) {
         return jsonError("That file does not appear to be a valid image.", 415);
       }
-      updated = await setUploadedPlaceImage(user.id, placeId, {
+      updated = await setUploadedPlaceImage(ownerUserId, placeId, {
         mimeType: file.type,
         bytes,
       });
@@ -60,7 +71,7 @@ export async function POST(
       return jsonError("Choose automatic, stock, or upload.", 400);
     }
 
-    if (!updated) return jsonError("That place is not in your list.", 404);
+    if (!updated) return jsonError("That place could not be found.", 404);
     revalidatePath("/");
     revalidatePath("/places");
     revalidatePath(`/places/${placeId}`);

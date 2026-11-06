@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
-import { getUploadedPlaceImage } from "@/lib/services/place-images";
+import { getViewableUploadedPlaceImage } from "@/lib/services/place-images";
 
 const GOOGLE_PHOTO_REF = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 
@@ -64,7 +64,7 @@ async function serveUploadedPhoto(ref: string): Promise<NextResponse> {
 
   const user = await getSessionUser();
   if (!user) return new NextResponse(null, { status: 401 });
-  const image = await getUploadedPlaceImage(user.id, placeId);
+  const image = await getViewableUploadedPlaceImage(user.id, placeId);
   if (!image) return new NextResponse(null, { status: 404 });
 
   const bytes = Uint8Array.from(Buffer.from(image.dataBase64, "base64"));

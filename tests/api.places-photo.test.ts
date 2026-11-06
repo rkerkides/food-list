@@ -6,10 +6,10 @@ import { GET } from "@/app/api/places/photo/route";
 // The route reads the session and uploaded images itself; place-images imports `server-only`, so both are mocked.
 const state = vi.hoisted(() => ({
   user: null as { id: string } | null,
-  getUploadedPlaceImage: vi.fn(),
+  getViewableUploadedPlaceImage: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ getSessionUser: vi.fn(async () => state.user) }));
-vi.mock("@/lib/services/place-images", () => ({ getUploadedPlaceImage: state.getUploadedPlaceImage }));
+vi.mock("@/lib/services/place-images", () => ({ getViewableUploadedPlaceImage: state.getViewableUploadedPlaceImage }));
 
 const VALID_REF = "places/ChIJ_a-1/photos/AbC-_9";
 const originalKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -26,7 +26,7 @@ function imageResponse(contentType = "image/jpeg", status = 200) {
 beforeEach(() => {
   vi.mocked(getSessionUser).mockClear();
   state.user = { id: "user_1" };
-  state.getUploadedPlaceImage.mockReset();
+  state.getViewableUploadedPlaceImage.mockReset();
   process.env.GOOGLE_PLACES_API_KEY = "test-key";
   fetchMock = vi.fn(async () => imageResponse());
   vi.stubGlobal("fetch", fetchMock);
@@ -111,23 +111,31 @@ describe("GET /api/places/photo — Google refs", () => {
   });
 });
 
-describe("GET /api/places/photo — upload and commons refs (unchanged)", () => {
+describe("GET /api/places/photo — viewer-based upload refs and commons refs", () => {
   it("returns 401 for an upload ref without a session", async () => {
     state.user = null;
     const response = await GET(request("upload:place_1:abc"));
     expect(response.status).toBe(401);
-    expect(state.getUploadedPlaceImage).not.toHaveBeenCalled();
+    expect(state.getViewableUploadedPlaceImage).not.toHaveBeenCalled();
   });
 
-  it("serves an uploaded image for the signed-in user", async () => {
-    state.getUploadedPlaceImage.mockResolvedValueOnce({
+  it("returns 404 when no upload is viewable by the signed-in user", async () => {
+    state.getViewableUploadedPlaceImage.mockResolvedValueOnce(null);
+    const response = await GET(request("upload:place_1:abc"));
+    expect(response.status).toBe(404);
+    expect(state.getViewableUploadedPlaceImage).toHaveBeenCalledWith("user_1", "place_1");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("serves an upload the signed-in viewer can see, looked up by viewer id", async () => {
+    state.getViewableUploadedPlaceImage.mockResolvedValueOnce({
       dataBase64: Buffer.from([7, 8]).toString("base64"),
       mimeType: "image/png",
       byteSize: 2,
     });
     const response = await GET(request("upload:place_1:abc"));
     expect(response.status).toBe(200);
-    expect(state.getUploadedPlaceImage).toHaveBeenCalledWith("user_1", "place_1");
+    expect(state.getViewableUploadedPlaceImage).toHaveBeenCalledWith("user_1", "place_1");
     expect(response.headers.get("Content-Type")).toBe("image/png");
     expect(response.headers.get("Cache-Control")).toBe("private, max-age=31536000, immutable");
     expect(fetchMock).not.toHaveBeenCalled();
